@@ -1,0 +1,76 @@
+/* App Layout and Responsive Rules */
+
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: var(--surface);
+}
+
+.main-content-wrapper {
+  margin-left: 240px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  transition: margin-left 0.25s ease;
+}
+
+.page-container {
+  padding: 84px 28px 48px;
+  flex: 1;
+  max-width: 1440px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .main-content-wrapper {
+    margin-left: 0 !important;
+  }
+
+  .sidebar {
+    transform: translateX(-100%);
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0) !important;
+  }
+
+  .page-container {
+    padding: 80px 16px 36px !important;
+  }
+}
+
+/* Animations */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--on-surface-variant);
+  transition: all 0.15s ease;
+}
+
+.nav-item:hover {
+  background-color: var(--surface-container-low);
+  color: var(--on-surface);
+}
+
+.nav-item.active {
+  background-color: var(--primary-container);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.room-card:hover img {
+  transform: scale(1.04);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md) !important;
+}

@@ -1,0 +1,136 @@
+# CampusRoom GraphQL Schema
+# Production-ready AppSync GraphQL schema with DynamoDB & DataStore compatibility
+
+enum RoomStatus {
+  AVAILABLE
+  OCCUPIED
+  MAINTENANCE
+  DISABLED
+}
+
+enum RoomType {
+  STUDY_POD
+  LAB
+  SEMINAR
+  AUDITORIUM
+  CONFERENCE
+}
+
+enum BookingStatus {
+  CONFIRMED
+  PENDING
+  CANCELLED
+  COMPLETED
+  CONFLICT
+}
+
+enum UserRole {
+  STUDENT
+  STAFF
+  ADMIN
+}
+
+enum NotificationType {
+  BOOKING_CONFIRMED
+  BOOKING_CANCELLED
+  REQUEST_PENDING
+  REQUEST_APPROVED
+  REQUEST_REJECTED
+  MAINTENANCE_ALERT
+  REMINDER
+}
+
+type User @model @auth(rules: [
+  { allow: owner, operations: [create, read, update] },
+  { allow: groups, groups: ["Admin"], operations: [create, read, update, delete] },
+  { allow: private, operations: [read] }
+]) {
+  id: ID!
+  email: String!
+  name: String!
+  role: UserRole!
+  department: String
+  avatarUrl: String
+  studentOrStaffId: String
+  bookings: [Booking] @hasMany(indexName: "byUser", fields: ["id"])
+  notifications: [Notification] @hasMany(indexName: "byUser", fields: ["id"])
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+}
+
+type Room @model @auth(rules: [
+  { allow: groups, groups: ["Admin"], operations: [create, read, update, delete] },
+  { allow: private, operations: [read] },
+  { allow: public, operations: [read] }
+]) {
+  id: ID!
+  code: String!
+  name: String!
+  building: String!
+  campusSector: String
+  floor: String!
+  capacity: Int!
+  roomType: RoomType!
+  facilities: [String]!
+  image: String
+  status: RoomStatus!
+  custodian: String
+  instantBookable: Boolean
+  bookings: [Booking] @hasMany(indexName: "byRoom", fields: ["id"])
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+}
+
+type Booking @model @auth(rules: [
+  { allow: owner, operations: [create, read, update, delete] },
+  { allow: groups, groups: ["Admin"], operations: [create, read, update, delete] },
+  { allow: private, operations: [read] }
+]) {
+  id: ID!
+  userId: ID! @index(name: "byUser")
+  user: User @belongsTo(fields: ["userId"])
+  roomId: ID! @index(name: "byRoom")
+  room: Room @belongsTo(fields: ["roomId"])
+  roomName: String!
+  building: String!
+  date: AWSDate!
+  startTime: AWSTime!
+  endTime: AWSTime!
+  purpose: String!
+  attendeeCount: Int!
+  status: BookingStatus!
+  keycardPin: String
+  qrPassCode: String
+  adminNotes: String
+  createdAt: AWSDateTime
+  updatedAt: AWSDateTime
+}
+
+type Notification @model @auth(rules: [
+  { allow: owner, operations: [create, read, update, delete] },
+  { allow: groups, groups: ["Admin"], operations: [create, read, update, delete] }
+]) {
+  id: ID!
+  userId: ID! @index(name: "byUser")
+  title: String!
+  message: String!
+  type: NotificationType!
+  isRead: Boolean!
+  relatedBookingId: ID
+  createdAt: AWSDateTime
+}
+
+type Query {
+  checkRoomAvailability(
+    roomId: ID!
+    date: AWSDate!
+    startTime: AWSTime!
+    endTime: AWSTime!
+  ): AvailabilityResult
+}
+
+type AvailabilityResult {
+  isAvailable: Boolean!
+  conflictingBooking: Booking
+  reason: String
+}
