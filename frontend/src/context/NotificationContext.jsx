@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
-import { dataStoreService } from "../aws/dataStore";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { notificationService } from "../services/notificationService";
 import { useAuth } from "./AuthContext";
 
 const NotificationContext = createContext();
@@ -9,14 +9,15 @@ export const NotificationProvider = ({ children }) => {
   const [notifications, setNotifications] = useState([]);
   const [toasts, setToasts] = useState([]);
 
-  const refreshNotifications = () => {
-    const list = dataStoreService.getNotifications(currentUser?.id);
+  const refreshNotifications = useCallback(async () => {
+    const userId = currentUser?.id || currentUser?.userId;
+    const list = await notificationService.getNotifications(userId);
     setNotifications(list);
-  };
+  }, [currentUser]);
 
   useEffect(() => {
     refreshNotifications();
-  }, [currentUser]);
+  }, [refreshNotifications]);
 
   const showToast = (message, type = "success", duration = 4000) => {
     const id = `toast-${Date.now()}-${Math.random()}`;
@@ -32,9 +33,9 @@ export const NotificationProvider = ({ children }) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const markAllRead = () => {
-    dataStoreService.markAllNotificationsRead(currentUser?.id);
-    refreshNotifications();
+  const markAllRead = async () => {
+    await notificationService.markAllRead(notifications);
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   };
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
@@ -61,3 +62,5 @@ export const useNotifications = () => {
   if (!context) throw new Error("useNotifications must be used within NotificationProvider");
   return context;
 };
+
+export default NotificationContext;

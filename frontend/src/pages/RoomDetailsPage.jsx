@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useBooking } from "../context/BookingContext";
 import { useAuth } from "../context/AuthContext";
 import StatusBadge from "../components/common/StatusBadge";
@@ -13,16 +13,14 @@ export const RoomDetailsPage = ({ room, onBack, onNavigate }) => {
   const [endTime, setEndTime] = useState("15:30");
   const [purpose, setPurpose] = useState("Senior Thesis Working Group");
   const [attendees, setAttendees] = useState(6);
-  const [validation, setValidation] = useState({ isAvailable: true, message: "" });
+  const validation = React.useMemo(() => {
+    if (room && date && startTime && endTime) {
+      return checkAvailability(room.id, date, startTime, endTime);
+    }
+    return { isAvailable: true, message: "" };
+  }, [room, date, startTime, endTime, checkAvailability]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmedBooking, setConfirmedBooking] = useState(null);
-
-  useEffect(() => {
-    if (room && date && startTime && endTime) {
-      const res = checkAvailability(room.id, date, startTime, endTime);
-      setValidation(res);
-    }
-  }, [room, date, startTime, endTime]);
 
   if (!room) {
     return (
@@ -519,7 +517,13 @@ export const RoomDetailsPage = ({ room, onBack, onNavigate }) => {
                 <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
                   check_circle
                 </span>
-                <span>{isSubmitting ? "Confirming..." : "Book Room"}</span>
+                <span>
+                  {isSubmitting
+                    ? "Confirming..."
+                    : room?.status === "MAINTENANCE"
+                    ? "Space Under Maintenance"
+                    : "Book Room"}
+                </span>
               </button>
             </form>
           </div>

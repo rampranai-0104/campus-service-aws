@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import Modal from "../common/Modal";
+import { roomService } from "../../services/roomService";
 
 export const RoomModal = ({ room, isOpen, onClose, onSave }) => {
   const [name, setName] = useState("");
@@ -12,11 +13,13 @@ export const RoomModal = ({ room, isOpen, onClose, onSave }) => {
   const [status, setStatus] = useState("AVAILABLE");
   const [custodian, setCustodian] = useState("Marcus Bradley");
   const [image, setImage] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
 
   useEffect(() => {
     if (room) {
       setName(room.name || "");
-      setCode(room.code || "");
+      setCode(room.code || room.roomNumber || "");
       setBuilding(room.building || "Turing Computing Complex");
       setFloor(room.floor || "");
       setCapacity(room.capacity || 16);
@@ -37,7 +40,26 @@ export const RoomModal = ({ room, isOpen, onClose, onSave }) => {
       setCustodian("Facilities Admin");
       setImage("https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80");
     }
+    setUploadSuccess(false);
   }, [room, isOpen]);
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    setUploadSuccess(false);
+    try {
+      const res = await roomService.uploadImage(file);
+      // Set the uploaded URL for display and persistence
+      setImage(res.url);
+      setUploadSuccess(true);
+    } catch (err) {
+      console.error("Failed to upload image to S3 bucket:", err);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -49,6 +71,7 @@ export const RoomModal = ({ room, isOpen, onClose, onSave }) => {
     onSave({
       name,
       code,
+      roomNumber: code,
       building,
       floor,
       capacity: parseInt(capacity, 10) || 10,
@@ -156,15 +179,55 @@ export const RoomModal = ({ room, isOpen, onClose, onSave }) => {
           />
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-          <label style={{ fontSize: "11px", fontWeight: "700", color: "var(--outline)", textTransform: "uppercase" }}>Room Image URL (Amazon S3)</label>
-          <input
-            type="text"
-            className="form-input"
-            value={image}
-            onChange={(e) => setImage(e.target.value)}
-            placeholder="https://..."
-          />
+        {/* Image URL & S3 Upload */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+          <label style={{ fontSize: "11px", fontWeight: "700", color: "var(--outline)", textTransform: "uppercase" }}>
+            Room Image (Amazon S3 Storage)
+          </label>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <input
+              type="text"
+              className="form-input"
+              value={image}
+              onChange={(e) => setImage(e.target.value)}
+              placeholder="https://..."
+              style={{ flex: 1 }}
+            />
+            <label
+              className="btn-secondary"
+              style={{
+                cursor: "pointer",
+                padding: "8px 12px",
+                fontSize: "12px",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+                cloud_upload
+              </span>
+              <span>{isUploading ? "Uploading..." : "Upload to S3"}</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                disabled={isUploading}
+                style={{ display: "none" }}
+              />
+            </label>
+          </div>
+          {uploadSuccess && (
+            <span style={{ fontSize: "11px", color: "var(--primary-container)", fontWeight: "600" }}>
+              ✓ Image successfully uploaded to Amazon S3 bucket!
+            </span>
+          )}
+          {image && (
+            <div style={{ marginTop: "6px", width: "100%", height: "90px", borderRadius: "8px", overflow: "hidden", border: "1px solid #e2e8f0" }}>
+              <img src={image} alt="Preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            </div>
+          )}
         </div>
 
         <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>

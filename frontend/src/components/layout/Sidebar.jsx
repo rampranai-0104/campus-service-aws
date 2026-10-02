@@ -2,6 +2,7 @@ import React from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useBooking } from "../../context/BookingContext";
 import { useNotifications } from "../../context/NotificationContext";
+import { awsConfig } from "../../aws/amplifyConfig";
 
 export const Sidebar = ({ activePath, onNavigate, mobileOpen, onCloseMobile }) => {
   const { currentUser, isAdmin, logout } = useAuth();
@@ -223,77 +224,79 @@ export const Sidebar = ({ activePath, onNavigate, mobileOpen, onCloseMobile }) =
               )}
             </button>
 
-            {/* Admin Section (Accessible to all for testing or restricted if desired) */}
-            <div style={{ padding: "14px 8px 3px", fontSize: "11px", fontWeight: "700", color: "var(--outline)", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span>Admin</span>
-              {!isAdmin && (
-                <span style={{ fontSize: "9px", color: "var(--primary-container)", cursor: "pointer", textTransform: "none" }} onClick={() => handleNav("admin")}>
-                  Demo Mode
-                </span>
-              )}
-            </div>
+            {/* Admin Section (Restricted to Admin Cognito Group) */}
+            {isAdmin && (
+              <>
+                <div style={{ padding: "14px 8px 3px", fontSize: "11px", fontWeight: "700", color: "var(--outline)", textTransform: "uppercase", letterSpacing: "0.04em", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span>Admin Control</span>
+                  <span style={{ fontSize: "9px", color: "var(--primary-container)", fontWeight: "700", textTransform: "uppercase" }}>
+                    Verified
+                  </span>
+                </div>
 
-            <button
-              onClick={() => handleNav("admin")}
-              className={`nav-button ${activePath === "admin" ? "active" : ""}`}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span className="material-symbols-outlined" style={{ fontSize: "19px" }}>
-                  space_dashboard
-                </span>
-                <span>Admin Dashboard</span>
-              </div>
-            </button>
-
-            <button
-              onClick={() => handleNav("room-management")}
-              className={`nav-button ${activePath === "room-management" ? "active" : ""}`}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span className="material-symbols-outlined" style={{ fontSize: "19px" }}>
-                  domain
-                </span>
-                <span>Room Management</span>
-              </div>
-            </button>
-
-            <button
-              onClick={() => handleNav("booking-requests")}
-              className={`nav-button ${activePath === "booking-requests" ? "active" : ""}`}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span className="material-symbols-outlined" style={{ fontSize: "19px" }}>
-                  rule
-                </span>
-                <span>Booking Requests</span>
-              </div>
-              {pendingRequestsCount > 0 && (
-                <span
-                  style={{
-                    padding: "1px 6px",
-                    borderRadius: "9999px",
-                    backgroundColor: "var(--secondary-container)",
-                    color: "var(--on-secondary-fixed)",
-                    fontSize: "11px",
-                    fontWeight: "600",
-                  }}
+                <button
+                  onClick={() => handleNav("admin")}
+                  className={`nav-button ${activePath === "admin" ? "active" : ""}`}
                 >
-                  {pendingRequestsCount} pending
-                </span>
-              )}
-            </button>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: "19px" }}>
+                      space_dashboard
+                    </span>
+                    <span>Admin Dashboard</span>
+                  </div>
+                </button>
 
-            <button
-              onClick={() => handleNav("analytics")}
-              className={`nav-button ${activePath === "analytics" ? "active" : ""}`}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span className="material-symbols-outlined" style={{ fontSize: "19px" }}>
-                  monitoring
-                </span>
-                <span>Analytics & Use</span>
-              </div>
-            </button>
+                <button
+                  onClick={() => handleNav("room-management")}
+                  className={`nav-button ${activePath === "room-management" ? "active" : ""}`}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: "19px" }}>
+                      domain
+                    </span>
+                    <span>Room Management</span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handleNav("booking-requests")}
+                  className={`nav-button ${activePath === "booking-requests" ? "active" : ""}`}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: "19px" }}>
+                      rule
+                    </span>
+                    <span>Booking Requests</span>
+                  </div>
+                  {pendingRequestsCount > 0 && (
+                    <span
+                      style={{
+                        padding: "1px 6px",
+                        borderRadius: "9999px",
+                        backgroundColor: "var(--secondary-container)",
+                        color: "var(--on-secondary-fixed)",
+                        fontSize: "11px",
+                        fontWeight: "600",
+                      }}
+                    >
+                      {pendingRequestsCount} pending
+                    </span>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => handleNav("analytics")}
+                  className={`nav-button ${activePath === "analytics" ? "active" : ""}`}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: "19px" }}>
+                      monitoring
+                    </span>
+                    <span>Analytics & Use</span>
+                  </div>
+                </button>
+              </>
+            )}
 
             {/* System Section */}
             <div style={{ padding: "14px 8px 3px", fontSize: "11px", fontWeight: "700", color: "var(--outline)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
@@ -354,7 +357,7 @@ export const Sidebar = ({ activePath, onNavigate, mobileOpen, onCloseMobile }) =
               />
             </div>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: isOfflineSim ? "#b45309" : "var(--on-surface)", fontWeight: "500" }}>
-              {isOfflineSim ? "Offline Sim Active" : "Connected (us-east-1)"}
+              {isOfflineSim ? "Offline Sim Active" : `Connected (${awsConfig.aws_project_region})`}
             </span>
             <span style={{ fontSize: "10px", color: "var(--on-surface-variant)" }}>
               {isOfflineSim ? "Mutations stored in IndexedDB" : "Auto-sync 20s ago"}
@@ -408,8 +411,13 @@ export const Sidebar = ({ activePath, onNavigate, mobileOpen, onCloseMobile }) =
             </div>
 
             <button
-              onClick={() => handleNav("login")}
-              title="Switch user / Log in"
+              onClick={async () => {
+                if (currentUser) {
+                  await logout();
+                }
+                handleNav("login");
+              }}
+              title={currentUser ? "Sign Out" : "Sign In"}
               style={{
                 width: "28px",
                 height: "28px",
@@ -422,7 +430,7 @@ export const Sidebar = ({ activePath, onNavigate, mobileOpen, onCloseMobile }) =
               className="hover:text-red-600 hover:bg-red-50"
             >
               <span className="material-symbols-outlined" style={{ fontSize: "17px" }}>
-                logout
+                {currentUser ? "logout" : "login"}
               </span>
             </button>
           </div>

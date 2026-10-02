@@ -256,6 +256,17 @@ export const MyBookingsPage = ({ onNavigate }) => {
                   <span style={{ fontSize: "12px", color: "var(--primary-container)", fontWeight: "600", marginTop: "2px" }}>
                     Purpose: {b.purpose}
                   </span>
+                  {b.status === "REJECTED" && (
+                    <span style={{ fontSize: "12px", color: "#dc2626", fontWeight: "600", marginTop: "4px", display: "flex", alignItems: "center", gap: "4px" }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>error</span>
+                      <span>Reason: {b.rejectionReason || "Unavailable due to scheduling conflict or room maintenance."}</span>
+                    </span>
+                  )}
+                  {b.adminNotes && b.status !== "REJECTED" && (
+                    <span style={{ fontSize: "11px", color: "var(--primary-container)", fontStyle: "italic", marginTop: "2px" }}>
+                      Note: {b.adminNotes}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -273,37 +284,65 @@ export const MyBookingsPage = ({ onNavigate }) => {
               </div>
 
               {/* Access PIN Pill */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: "120px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px", minWidth: "130px" }}>
                 <span style={{ fontSize: "11px", fontWeight: "700", color: "var(--outline)", textTransform: "uppercase" }}>
                   Door PIN
                 </span>
                 <span
                   style={{
                     fontFamily: "var(--font-mono)",
-                    fontSize: "16px",
+                    fontSize: b.status === "CONFIRMED" ? "16px" : "13px",
                     fontWeight: "800",
-                    letterSpacing: "0.08em",
-                    color: "var(--primary-container)",
+                    letterSpacing: b.status === "CONFIRMED" ? "0.08em" : "normal",
+                    color: b.status === "CONFIRMED" ? "var(--primary-container)" : "var(--outline)",
                   }}
                 >
-                  {b.keycardPin ? `***${b.keycardPin.slice(-2)}` : "Pending Approval"}
+                  {b.status === "CONFIRMED"
+                    ? (b.keycardPin ? `***${b.keycardPin.slice(-2)}` : "Active")
+                    : b.status === "PENDING"
+                    ? "Pending Approval"
+                    : "—"}
                 </span>
               </div>
 
               {/* Action Buttons */}
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <button
-                  onClick={() => setSelectedPass(b)}
-                  className="btn-primary"
-                  style={{ height: "36px", padding: "0 14px", fontSize: "12px" }}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
-                    badge
-                  </span>
-                  <span>View Pass</span>
-                </button>
+                {b.status === "CONFIRMED" && (
+                  <button
+                    onClick={() => setSelectedPass(b)}
+                    className="btn-primary"
+                    style={{ height: "36px", padding: "0 14px", fontSize: "12px" }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
+                      badge
+                    </span>
+                    <span>View Pass</span>
+                  </button>
+                )}
 
-                {b.status !== "CANCELLED" && (
+                {b.status === "PENDING" && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                      fontSize: "12px",
+                      color: "var(--amber-700)",
+                      backgroundColor: "var(--amber-50)",
+                      padding: "6px 10px",
+                      borderRadius: "8px",
+                      border: "1px solid var(--amber-200)",
+                      fontWeight: "600",
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: "16px", color: "var(--amber-600)" }}>
+                      hourglass_empty
+                    </span>
+                    <span>Pending Approval</span>
+                  </div>
+                )}
+
+                {b.status !== "CANCELLED" && b.status !== "REJECTED" && (
                   <button
                     onClick={() => setBookingToCancel(b)}
                     className="btn-destructive"

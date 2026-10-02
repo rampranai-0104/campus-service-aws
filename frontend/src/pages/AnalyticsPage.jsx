@@ -1,30 +1,45 @@
-import React from "react";
+import React, { useMemo } from "react";
 import StatCard from "../components/common/StatCard";
+import { useBooking } from "../context/BookingContext";
+import {
+  calculateTotalHoursBooked,
+  getBookingStatusCounts,
+  calculateSpaceEfficiency,
+  calculateComplexUtilization,
+  calculateHourlyOccupancy,
+  calculatePeakOccupancy,
+  getNoShowsMetrics,
+} from "../services/analyticsService";
 
 export const AnalyticsPage = () => {
-  const buildingUtilization = [
-    { name: "Turing Computing Complex", pct: 88, rooms: 24, hours: 412 },
-    { name: "Science & Engineering Hall", pct: 92, rooms: 32, hours: 560 },
-    { name: "Central Library Pods", pct: 96, rooms: 18, hours: 380 },
-    { name: "BioTech Research Center", pct: 74, rooms: 14, hours: 220 },
-    { name: "Baker Humanities Center", pct: 68, rooms: 22, hours: 290 },
-    { name: "Environmental Sciences", pct: 62, rooms: 18, hours: 180 },
-  ];
+  const { rooms = [], bookings = [] } = useBooking();
 
-  const hourlyDistribution = [
-    { hour: "08:00", rate: 35 },
-    { hour: "09:00", rate: 58 },
-    { hour: "10:00", rate: 82 },
-    { hour: "11:00", rate: 89 },
-    { hour: "12:00", rate: 64 },
-    { hour: "13:00", rate: 76 },
-    { hour: "14:00", rate: 94 },
-    { hour: "15:00", rate: 96 },
-    { hour: "16:00", rate: 88 },
-    { hour: "17:00", rate: 71 },
-    { hour: "18:00", rate: 52 },
-    { hour: "19:00", rate: 38 },
-  ];
+  // 1. Total Confirmed Booked Hours
+  const totalHoursBooked = useMemo(() => calculateTotalHoursBooked(bookings), [bookings]);
+
+  // 2-5. Booking Status Counts (Confirmed, Pending, Cancelled, Rejected)
+  const statusCounts = useMemo(() => getBookingStatusCounts(bookings), [bookings]);
+
+  // 6, 11. Overall Space Efficiency
+  const spaceEfficiency = useMemo(() => calculateSpaceEfficiency(rooms, bookings), [rooms, bookings]);
+
+  // 7. Complex / Building Utilization
+  const buildingUtilization = useMemo(
+    () => calculateComplexUtilization(rooms, bookings),
+    [rooms, bookings]
+  );
+
+  // 8. Hourly Occupancy Distribution
+  const hourlyDistribution = useMemo(
+    () => calculateHourlyOccupancy(rooms, bookings),
+    [rooms, bookings]
+  );
+
+  // 9. Peak Occupancy Period
+  const peakData = useMemo(() => calculatePeakOccupancy(hourlyDistribution), [hourlyDistribution]);
+
+  // 10. No-Show Telemetry (Schema check)
+  const noShows = useMemo(() => getNoShowsMetrics(), []);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px" }} className="analytics-page animate-fade-in">
@@ -39,7 +54,7 @@ export const AnalyticsPage = () => {
           Campus Space Analytics &amp; Utilization
         </h1>
         <p style={{ fontSize: "14px", color: "var(--on-surface-variant)", margin: "4px 0 0" }}>
-          Comprehensive space optimization metrics, peak schedule pressure hours, and departmental space allocations.
+          Live space optimization telemetry derived directly from AWS AppSync and DynamoDB room reservations.
         </p>
       </div>
 
@@ -47,34 +62,86 @@ export const AnalyticsPage = () => {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "16px" }}>
         <StatCard
           title="Overall Space Efficiency"
-          value="84.6%"
+          value={spaceEfficiency.formatted}
           icon="insights"
-          trend="+5.2% vs last term"
-          trendPositive={true}
+          trend={`${totalHoursBooked} hrs / ${spaceEfficiency.totalCapacityHours}h weekly cap`}
+          trendPositive={spaceEfficiency.pct > 0}
         />
         <StatCard
           title="Total Hours Booked (Week)"
-          value="2,042"
+          value={totalHoursBooked.toLocaleString()}
           unit="hrs"
           icon="timelapse"
-          trend="89% check-in rate"
+          trend={`${statusCounts.confirmed} confirmed reservations`}
           trendPositive={true}
         />
         <StatCard
           title="Auto-Released No-Shows"
-          value="38"
-          unit="slots"
+          value={noShows.value}
+          unit={noShows.unit}
           icon="event_repeat"
-          trend="Reclaimed ~57 hours"
+          trend={noShows.trend}
           trendPositive={true}
         />
         <StatCard
           title="Peak Window Occupancy"
-          value="96%"
+          value={`${peakData.peakRate}%`}
           icon="speed"
-          trend="2:00 PM – 4:30 PM"
-          trendPositive={false}
+          trend={peakData.peakWindow}
+          trendPositive={peakData.peakRate < 85}
         />
+      </div>
+
+      {/* Live Booking Telemetry Strip (Metrics 2, 3, 4, 5) */}
+      <div
+        style={{
+          borderRadius: "14px",
+          backgroundColor: "var(--surface-container-lowest)",
+          padding: "14px 20px",
+          border: "1px solid #f1f5f9",
+          boxShadow: "var(--shadow-xs)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: "12px",
+          fontSize: "13px",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span className="material-symbols-outlined" style={{ fontSize: "20px", color: "var(--primary-container)" }}>
+            tune
+          </span>
+          <span style={{ fontWeight: "700", color: "var(--on-surface)" }}>
+            Live Booking Telemetry:
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#10b981" }} />
+            <span style={{ color: "var(--on-surface-variant)" }}>Confirmed:</span>
+            <strong style={{ color: "var(--on-surface)" }}>{statusCounts.confirmed}</strong>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#f59e0b" }} />
+            <span style={{ color: "var(--on-surface-variant)" }}>Pending:</span>
+            <strong style={{ color: "var(--on-surface)" }}>{statusCounts.pending}</strong>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#ef4444" }} />
+            <span style={{ color: "var(--on-surface-variant)" }}>Cancelled:</span>
+            <strong style={{ color: "var(--on-surface)" }}>{statusCounts.cancelled}</strong>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#64748b" }} />
+            <span style={{ color: "var(--on-surface-variant)" }}>Rejected:</span>
+            <strong style={{ color: "var(--on-surface)" }}>{statusCounts.rejected}</strong>
+          </div>
+          <div style={{ height: "16px", width: "1px", backgroundColor: "#e2e8f0" }} />
+          <div style={{ color: "var(--outline)", fontSize: "12px" }}>
+            Tracking {rooms.length} registered spaces ({rooms.filter((r) => r.status === "AVAILABLE").length} active)
+          </div>
+        </div>
       </div>
 
       {/* Utilization Charts Grid */}
@@ -102,26 +169,35 @@ export const AnalyticsPage = () => {
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-            {buildingUtilization.map((b) => (
-              <div key={b.name} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
-                  <span style={{ fontWeight: "600", color: "var(--on-surface)" }}>{b.name}</span>
-                  <span style={{ fontFamily: "var(--font-mono)", fontWeight: "700", color: "var(--primary-container)" }}>
-                    {b.pct}% ({b.hours} hrs)
-                  </span>
-                </div>
-                <div style={{ width: "100%", height: "8px", borderRadius: "9999px", backgroundColor: "var(--surface-container-low)", overflow: "hidden" }}>
-                  <div
-                    style={{
-                      width: `${b.pct}%`,
-                      height: "100%",
-                      backgroundColor: b.pct > 90 ? "var(--primary)" : "var(--primary-container)",
-                      borderRadius: "9999px",
-                    }}
-                  />
-                </div>
+            {buildingUtilization.length === 0 ? (
+              <div style={{ padding: "24px", textAlign: "center", color: "var(--outline)", fontSize: "13px" }}>
+                No campus complexes found in live catalog.
               </div>
-            ))}
+            ) : (
+              buildingUtilization.map((b) => (
+                <div key={b.name} style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "13px" }}>
+                    <span style={{ fontWeight: "600", color: "var(--on-surface)" }}>
+                      {b.name} <span style={{ fontSize: "11px", color: "var(--outline)", fontWeight: "500" }}>({b.rooms} spaces)</span>
+                    </span>
+                    <span style={{ fontFamily: "var(--font-mono)", fontWeight: "700", color: "var(--primary-container)" }}>
+                      {b.pct}% ({b.hours} hrs)
+                    </span>
+                  </div>
+                  <div style={{ width: "100%", height: "8px", borderRadius: "9999px", backgroundColor: "var(--surface-container-low)", overflow: "hidden" }}>
+                    <div
+                      style={{
+                        width: `${Math.max(b.pct, 0)}%`,
+                        height: "100%",
+                        backgroundColor: b.pct > 80 ? "var(--primary)" : "var(--primary-container)",
+                        borderRadius: "9999px",
+                        transition: "width 0.4s ease",
+                      }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -143,7 +219,7 @@ export const AnalyticsPage = () => {
               Hourly Occupancy Curve (Campus-Wide)
             </h3>
             <p style={{ fontSize: "12px", color: "var(--on-surface-variant)", margin: "2px 0 0" }}>
-              Hourly reservation distribution across all 128 spaces
+              Hourly reservation distribution across all {rooms.length} spaces
             </p>
           </div>
 
@@ -160,7 +236,7 @@ export const AnalyticsPage = () => {
             }}
           >
             {hourlyDistribution.map((slot) => {
-              const isPeak = slot.rate >= 90;
+              const isPeak = slot.rate > 0 && slot.rate === peakData.peakRate;
               return (
                 <div
                   key={slot.hour}
@@ -173,7 +249,7 @@ export const AnalyticsPage = () => {
                     height: "100%",
                     justifyContent: "flex-end",
                   }}
-                  title={`${slot.hour}: ${slot.rate}% Occupancy`}
+                  title={`${slot.hour}: ${slot.rate}% Occupancy (${slot.occupiedRooms}/${slot.totalRooms} spaces)`}
                 >
                   <span style={{ fontSize: "10px", fontFamily: "var(--font-mono)", fontWeight: "700", color: isPeak ? "var(--primary)" : "var(--outline)" }}>
                     {slot.rate}%
@@ -181,9 +257,9 @@ export const AnalyticsPage = () => {
                   <div
                     style={{
                       width: "100%",
-                      height: `${slot.rate}%`,
+                      height: `${Math.max(slot.rate, 2)}%`,
                       borderRadius: "4px 4px 0 0",
-                      backgroundColor: isPeak ? "var(--primary-container)" : "var(--surface-container-high)",
+                      backgroundColor: isPeak ? "var(--primary-container)" : slot.rate > 0 ? "var(--primary-fixed-dim)" : "var(--surface-container-high)",
                       transition: "height 0.4s ease",
                     }}
                   />
@@ -196,9 +272,11 @@ export const AnalyticsPage = () => {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "12px", color: "var(--on-surface-variant)" }}>
-            <span>Morning Low: 08:00 (35%)</span>
-            <span style={{ fontWeight: "700", color: "var(--primary-container)" }}>Peak: 14:00 - 16:00 (96%)</span>
-            <span>Evening: 19:00 (38%)</span>
+            <span>Morning: 08:00 ({hourlyDistribution[0]?.rate || 0}%)</span>
+            <span style={{ fontWeight: "700", color: "var(--primary-container)" }}>
+              {peakData.hasActivity ? `Peak: ${peakData.peakWindow} (${peakData.peakRate}%)` : "No peak pressure detected"}
+            </span>
+            <span>Evening: 19:00 ({hourlyDistribution[hourlyDistribution.length - 1]?.rate || 0}%)</span>
           </div>
         </div>
       </div>

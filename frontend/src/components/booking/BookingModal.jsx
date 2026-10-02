@@ -3,6 +3,7 @@ import Modal from "../common/Modal";
 import { useBooking } from "../../context/BookingContext";
 import { useAuth } from "../../context/AuthContext";
 import KeycardPassModal from "./KeycardPassModal";
+import RequestSubmittedModal from "./RequestSubmittedModal";
 
 export const BookingModal = ({ room, isOpen, onClose }) => {
   const { createBooking, checkAvailability } = useBooking();
@@ -214,16 +215,33 @@ export const BookingModal = ({ room, isOpen, onClose }) => {
               }}
             >
               <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
-                verified
+                {currentUser?.role === "Admin" ? "verified" : "send"}
               </span>
-              <span>{isSubmitting ? "Booking..." : "Confirm Booking"}</span>
+              <span>
+                {room.status === "MAINTENANCE"
+                  ? "Room Under Maintenance"
+                  : isSubmitting
+                  ? (currentUser?.role === "Admin" ? "Booking..." : "Submitting...")
+                  : (currentUser?.role === "Admin" ? "Confirm Booking" : "Submit Reservation Request")}
+              </span>
             </button>
           </div>
         </form>
       </Modal>
 
-      {/* Confirmation Keycard Pass Modal */}
-      {confirmedBooking && (
+      {/* Confirmation / Pending Modal */}
+      {confirmedBooking && confirmedBooking.status === "PENDING" && (
+        <RequestSubmittedModal
+          booking={confirmedBooking}
+          isOpen={true}
+          onClose={() => {
+            setConfirmedBooking(null);
+            onClose();
+          }}
+        />
+      )}
+
+      {confirmedBooking && confirmedBooking.status === "CONFIRMED" && (
         <KeycardPassModal
           booking={confirmedBooking}
           isOpen={true}

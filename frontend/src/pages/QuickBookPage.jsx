@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useBooking } from "../context/BookingContext";
 import { useAuth } from "../context/AuthContext";
 import KeycardPassModal from "../components/booking/KeycardPassModal";
+import RequestSubmittedModal from "../components/booking/RequestSubmittedModal";
 
 export const QuickBookPage = ({ onNavigate }) => {
   const { rooms, createBooking, checkAvailability } = useBooking();
@@ -76,7 +77,7 @@ export const QuickBookPage = ({ onNavigate }) => {
         {[
           { num: 1, title: "1. Select Room" },
           { num: 2, title: "2. Date & Schedule" },
-          { num: 3, title: "3. Confirm & Pass" },
+          { num: 3, title: currentUser?.role === "Admin" ? "3. Confirm & Pass" : "3. Review & Request" },
         ].map((s) => (
           <div
             key={s.num}
@@ -319,15 +320,26 @@ export const QuickBookPage = ({ onNavigate }) => {
                 ← Back
               </button>
               <button type="submit" className="btn-primary" style={{ padding: "0 28px" }}>
-                Confirm &amp; Generate PIN Pass
+                {currentUser?.role === "Admin" ? "Confirm & Generate PIN Pass" : "Submit Reservation Request"}
               </button>
             </div>
           </form>
         )}
       </div>
 
-      {/* Confirmation Keycard Pass Modal */}
-      {confirmedBooking && (
+      {/* Confirmation / Pending Pass Modal */}
+      {confirmedBooking && confirmedBooking.status === "PENDING" && (
+        <RequestSubmittedModal
+          booking={confirmedBooking}
+          isOpen={true}
+          onClose={() => {
+            setConfirmedBooking(null);
+            onNavigate("my-bookings");
+          }}
+        />
+      )}
+
+      {confirmedBooking && confirmedBooking.status === "CONFIRMED" && (
         <KeycardPassModal
           booking={confirmedBooking}
           isOpen={true}

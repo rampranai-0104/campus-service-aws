@@ -6,6 +6,8 @@ export const RequestActionModal = ({ booking, actionType, isOpen, onClose }) => 
   const { rooms, approveBooking, rejectBooking, reassignBooking } = useBooking();
   const [adminNote, setAdminNote] = useState("");
   const [selectedNewRoomId, setSelectedNewRoomId] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   if (!booking) return null;
 
@@ -13,18 +15,36 @@ export const RequestActionModal = ({ booking, actionType, isOpen, onClose }) => 
     (r) => r.id !== booking.roomId && r.status === "AVAILABLE" && r.capacity >= booking.attendeeCount
   );
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (actionType === "approve") {
-      approveBooking(booking.id, adminNote || "Approved by Facilities Department");
-    } else if (actionType === "reject") {
-      rejectBooking(booking.id, adminNote || "Unavailable due to scheduled academic exam");
-    } else if (actionType === "reassign") {
-      if (selectedNewRoomId) {
-        reassignBooking(booking.id, selectedNewRoomId);
+    setIsSubmitting(true);
+    setErrorMessage("");
+
+    try {
+      let result;
+      if (actionType === "approve") {
+        result = await approveBooking(booking.id, adminNote || "Approved by Facilities Department");
+      } else if (actionType === "reject") {
+        result = await rejectBooking(booking.id, adminNote || "Unavailable due to scheduled academic exam");
+      } else if (actionType === "reassign") {
+        if (!selectedNewRoomId) {
+          setErrorMessage("Please select an alternative room.");
+          setIsSubmitting(false);
+          return;
+        }
+        result = await reassignBooking(booking.id, selectedNewRoomId);
       }
+
+      if (result && !result.success) {
+        setErrorMessage(result.error || "Action could not be completed due to a conflict or validation error.");
+      } else {
+        onClose();
+      }
+    } catch (err) {
+      setErrorMessage(err.message || "An unexpected error occurred.");
+    } finally {
+      setIsSubmitting(false);
     }
-    onClose();
   };
 
   const getTitle = () => {
@@ -66,6 +86,30 @@ export const RequestActionModal = ({ booking, actionType, isOpen, onClose }) => 
           </div>
         </div>
 
+        {/* Error / Conflict Alert */}
+        {errorMessage && (
+          <div
+            style={{
+              padding: "10px 12px",
+              borderRadius: "8px",
+              backgroundColor: "#fee2e2",
+              border: "1px solid #fca5a5",
+              color: "#991b1b",
+              fontSize: "12px",
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "8px",
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: "18px", color: "#dc2626", flexShrink: 0 }}>
+              error
+            </span>
+            <div style={{ lineHeight: "1.4" }}>
+              <strong>Action Blocked:</strong> {errorMessage}
+            </div>
+          </div>
+        )}
+
         {/* Reassignment Dropdown */}
         {actionType === "reassign" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
@@ -77,6 +121,7 @@ export const RequestActionModal = ({ booking, actionType, isOpen, onClose }) => 
               value={selectedNewRoomId}
               onChange={(e) => setSelectedNewRoomId(e.target.value)}
               required
+              disabled={isSubmitting}
             >
               <option value="">-- Choose an alternative room --</option>
               {availableAlternativeRooms.map((r) => (
@@ -100,20 +145,28 @@ export const RequestActionModal = ({ booking, actionType, isOpen, onClose }) => 
             value={adminNote}
             onChange={(e) => setAdminNote(e.target.value)}
             required={actionType === "reject"}
+            disabled={isSubmitting}
           />
         </div>
 
         {/* Actions */}
         <div style={{ display: "flex", gap: "10px", marginTop: "6px" }}>
-          <button type="button" onClick={onClose} className="btn-secondary" style={{ flex: 1 }}>
+          <button type="button" onClick={onClose} disabled={isSubmitting} className="btn-secondary" style={{ flex: 1 }}>
             Cancel
           </button>
           <button
             type="submit"
+            disabled={isSubmitting}
             className={actionType === "reject" ? "btn-destructive" : "btn-primary"}
-            style={{ flex: 1.2 }}
+            style={{ flex: 1.2, opacity: isSubmitting ? 0.6 : 1, cursor: isSubmitting ? "not-allowed" : "pointer" }}
           >
-            {actionType === "approve" ? "Confirm Approval" : actionType === "reject" ? "Confirm Rejection" : "Confirm Reassignment"}
+            {isSubmitting
+              ? "Processing..."
+              : actionType === "approve"
+              ? "Confirm Approval"
+              : actionType === "reject"
+              ? "Confirm Rejection"
+              : "Confirm Reassignment"}
           </button>
         </div>
       </form>

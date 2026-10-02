@@ -4,7 +4,7 @@ import RoomCard from "../components/common/RoomCard";
 import BookingModal from "../components/booking/BookingModal";
 
 export const RoomsPage = ({ onSelectRoom, onNavigate }) => {
-  const { rooms, searchQuery, setSearchQuery } = useBooking();
+  const { rooms, searchQuery, setSearchQuery, refreshData } = useBooking();
 
   const [buildingFilter, setBuildingFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -126,7 +126,10 @@ export const RoomsPage = ({ onSelectRoom, onNavigate }) => {
             <span>Low-latency conflict verification active</span>
           </span>
           <button
-            onClick={resetFilters}
+            onClick={() => {
+              resetFilters();
+              if (refreshData) refreshData();
+            }}
             style={{ color: "var(--primary-container)", fontWeight: "600", display: "flex", alignItems: "center", gap: "2px" }}
           >
             <span>Refresh Catalog</span>

@@ -1,13 +1,12 @@
-import React, { useState } from "react";
+import React from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useBooking } from "../../context/BookingContext";
 import { useNotifications } from "../../context/NotificationContext";
 
 export const Header = ({ onOpenMobile, onNavigate }) => {
-  const { currentUser, switchUser, availableUsers } = useAuth();
+  const { currentUser } = useAuth();
   const { isOfflineSim, toggleOfflineSim, searchQuery, setSearchQuery } = useBooking();
   const { unreadCount } = useNotifications();
-  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -173,95 +172,39 @@ export const Header = ({ onOpenMobile, onNavigate }) => {
           )}
         </button>
 
-        {/* Role Switcher Pill & Dropdown (Easy testing for reviewer) */}
-        <div style={{ position: "relative" }}>
-          <button
-            onClick={() => setShowRoleDropdown(!showRoleDropdown)}
+        {/* User Role Profile Badge */}
+        {currentUser ? (
+          <div
             style={{
               display: "flex",
               alignItems: "center",
               gap: "8px",
-              padding: "4px 10px 4px 6px",
+              padding: "4px 12px 4px 6px",
               borderRadius: "9999px",
               backgroundColor: "var(--surface-container-lowest)",
               border: "1px solid #e2e8f0",
               boxShadow: "var(--shadow-xs)",
             }}
-            title="Switch User Role Persona"
+            title={`Signed in as ${currentUser.name} (${currentUser.email})`}
           >
             <img
-              src={currentUser?.avatarUrl}
-              alt={currentUser?.name}
+              src={currentUser.avatarUrl}
+              alt={currentUser.name}
               style={{ width: "26px", height: "26px", borderRadius: "50%", objectFit: "cover" }}
             />
             <span style={{ fontSize: "12px", fontWeight: "600", color: "var(--on-surface)" }}>
-              {currentUser?.role === "STAFF" ? "Faculty" : currentUser?.role === "STUDENT" ? "Student" : "Admin"}
+              {currentUser.role === "STAFF" ? "Faculty" : currentUser.role === "ADMIN" ? "Admin" : "Student"}
             </span>
-            <span className="material-symbols-outlined" style={{ fontSize: "16px", color: "var(--outline)" }}>
-              expand_more
-            </span>
+          </div>
+        ) : (
+          <button
+            onClick={() => onNavigate && onNavigate("login")}
+            className="btn-primary"
+            style={{ height: "32px", padding: "0 12px", fontSize: "12px" }}
+          >
+            Sign In
           </button>
-
-          {showRoleDropdown && (
-            <div
-              className="animate-fade-in"
-              style={{
-                position: "absolute",
-                right: 0,
-                top: "42px",
-                width: "240px",
-                backgroundColor: "#ffffff",
-                borderRadius: "12px",
-                border: "1px solid #e2e8f0",
-                boxShadow: "var(--shadow-lg)",
-                padding: "8px",
-                zIndex: 60,
-                display: "flex",
-                flexDirection: "column",
-                gap: "4px",
-              }}
-            >
-              <div style={{ padding: "6px 8px", fontSize: "11px", fontWeight: "700", color: "var(--outline)", textTransform: "uppercase" }}>
-                Switch Persona For Testing:
-              </div>
-
-              {availableUsers.map((user) => (
-                <button
-                  key={user.id}
-                  onClick={() => {
-                    switchUser(user);
-                    setShowRoleDropdown(false);
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    padding: "8px",
-                    borderRadius: "8px",
-                    backgroundColor: currentUser?.id === user.id ? "var(--surface-container-low)" : "transparent",
-                    textAlign: "left",
-                    width: "100%",
-                  }}
-                  className="hover:bg-slate-50"
-                >
-                  <img
-                    src={user.avatarUrl}
-                    alt={user.name}
-                    style={{ width: "28px", height: "28px", borderRadius: "50%", objectFit: "cover" }}
-                  />
-                  <div style={{ display: "flex", flexDirection: "column" }}>
-                    <span style={{ fontSize: "12px", fontWeight: "600", color: "#0f172a" }}>
-                      {user.name}
-                    </span>
-                    <span style={{ fontSize: "11px", color: "#64748b" }}>
-                      {user.roleLabel}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       <style>{`

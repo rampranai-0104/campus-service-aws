@@ -1,104 +1,246 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { initialUsers } from "../aws/mockData";
+import { authService } from "../services/authService";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  // Default to Dr. Sarah Chen (Staff/Faculty) as shown in Stitch screens
-  const [currentUser, setCurrentUser] = useState(() => {
-    const saved = localStorage.getItem("campusroom_active_user");
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { /* fallback */ }
-    }
-    return initialUsers[0];
-  });
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
-
+  // Check existing live Cognito session on mount
   useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem("campusroom_active_user", JSON.stringify(currentUser));
-    } else {
-      localStorage.removeItem("campusroom_active_user");
-    }
-  }, [currentUser]);
+    let mounted = true;
 
-  const login = async (email, password) => {
-    // Simulated Cognito authentication
-    await new Promise((r) => setTimeout(r, 400));
-    const matched = initialUsers.find((u) => u.email.toLowerCase() === email.toLowerCase());
-    if (matched) {
-      setCurrentUser(matched);
-      setIsAuthenticated(true);
-      return { success: true, user: matched };
-    }
-    // Generic fallback for custom email
-    const fallbackUser = {
-      id: `usr-${Date.now()}`,
-      name: email.split("@")[0].replace(".", " ").replace(/\b\w/g, (c) => c.toUpperCase()),
-      email,
-      role: email.includes("admin") ? "ADMIN" : email.includes("staff") ? "STAFF" : "STUDENT",
-      roleLabel: email.includes("admin") ? "System Admin" : email.includes("staff") ? "Staff Member" : "University Student",
-      department: "Campus Academic Community",
-      avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
-    };
-    setCurrentUser(fallbackUser);
-    setIsAuthenticated(true);
-    return { success: true, user: fallbackUser };
-  };
-
-  const register = async (userData) => {
-    await new Promise((r) => setTimeout(r, 450));
-    const newUser = {
-      id: `usr-${Date.now()}`,
-      name: userData.name,
-      email: userData.email,
-      role: userData.role || "STUDENT",
-      roleLabel: userData.role === "ADMIN" ? "Administrator" : userData.role === "STAFF" ? "Faculty Staff" : "Undergraduate Student",
-      department: userData.department || "Academic Department",
-      studentOrStaffId: userData.idNumber || `ID-${Math.floor(10000 + Math.random() * 90000)}`,
-      avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
-    };
-    setCurrentUser(newUser);
-    setIsAuthenticated(true);
-    return { success: true, user: newUser };
-  };
-
-  const logout = () => {
-    setIsAuthenticated(false);
-    // Switch to null or unauthenticated state
-  };
-
-  const switchUser = (roleOrUser) => {
-    if (typeof roleOrUser === "string") {
-      const found = initialUsers.find((u) => u.role === roleOrUser.toUpperCase());
-      if (found) {
-        setCurrentUser(found);
-        setIsAuthenticated(true);
+    const checkSession = async () => {
+      try {
+        const profile = await authService.getCurrentUserProfile();
+        if (mounted) {
+          if (profile) {
+            setCurrentUser(profile);
+            setIsAuthenticated(true);
+          } else {
+            setCurrentUser(null);
+            setIsAuthenticated(false);
+          }
+        }
+      } catch (err) {
+        console.warn("Auth check initialization:", err);
+        if (mounted) {
+          setCurrentUser(null);
+          setIsAuthenticated(false);
+        }
+      } finally {
+        if (mounted) setIsLoadingAuth(false);
       }
-    } else if (roleOrUser) {
-      setCurrentUser(roleOrUser);
-      setIsAuthenticated(true);
+    };
+
+    checkSession();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  /**
+   * Real Cognito Sign In
+   */
+  const login = async (email, password) => {
+    try {
+      const signInRes = await authService.signIn(email, password);
+
+      if (signInRes.isSignedIn) {
+        const profile = await authService.getCurrentUserProfile();
+        setCurrentUser(profile);
+        setIsAuthenticated(true);
+        return { success: true, user: profile };
+      }
+
+      if (signInRes.nextStep?.signInStep === "CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED") {
+        return {
+          success: false,
+          requiresNewPassword: true,
+          nextStep: signInRes.nextStep,
+          email,
+        };
+      }
+
+      if (signInRes.nextStep?.signInStep === "CONFIRM_SIGN_UP") {
+        return {
+          success: false,
+          requiresConfirmation: true,
+          email,
+          error: "Email verification is required before signing in.",
+        };
+      }
+
+      return {
+        success: false,
+        nextStep: signInRes.nextStep,
+        error: "Additional authentication steps required.",
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message || "Failed to sign in. Please verify your credentials.",
+      };
     }
   };
 
-  const isAdmin = currentUser?.role === "ADMIN";
-  const isStaff = currentUser?.role === "STAFF";
-  const isStudent = currentUser?.role === "STUDENT";
+  /**
+   * Confirm temporary password challenge with new permanent password
+   */
+  const confirmNewPassword = async (newPassword) => {
+    try {
+      const res = await authService.confirmSignIn(newPassword);
+
+      if (res.isSignedIn || res.nextStep?.signInStep === "DONE") {
+        const profile = await authService.getCurrentUserProfile();
+        setCurrentUser(profile);
+        setIsAuthenticated(true);
+        return { success: true, user: profile };
+      }
+
+      if (res.nextStep?.signInStep === "CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED") {
+        return {
+          success: false,
+          requiresNewPassword: true,
+          nextStep: res.nextStep,
+          error: "Please enter a valid new password meeting security criteria.",
+        };
+      }
+
+      return {
+        success: false,
+        nextStep: res.nextStep,
+        error: "Further authentication steps required.",
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message || "Failed to set new password. Please verify requirements and try again.",
+      };
+    }
+  };
+
+  /**
+   * Real Cognito Sign Up (Student & Faculty only, Admin strictly forbidden)
+   */
+  const register = async (userData) => {
+    try {
+      const res = await authService.signUp({
+        email: userData.email,
+        password: userData.password,
+        name: userData.name,
+        role: userData.role || "STUDENT",
+        department: userData.department,
+        idNumber: userData.idNumber,
+      });
+
+      return {
+        success: true,
+        isComplete: res.isSignUpComplete,
+        nextStep: res.nextStep,
+        email: userData.email,
+        assignedRole: res.assignedRole,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message || "Registration failed. Please check password requirements and try again.",
+      };
+    }
+  };
+
+  /**
+   * Confirm email verification code
+   */
+  const verifyEmail = async (email, code) => {
+    try {
+      const res = await authService.confirmSignUp(email, code);
+      return { success: true, isComplete: res.isSignUpComplete };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message || "Invalid or expired verification code.",
+      };
+    }
+  };
+
+  /**
+   * Resend signup verification code
+   */
+  const resendVerificationCode = async (email) => {
+    try {
+      await authService.resendSignUpCode(email);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message || "Failed to resend code." };
+    }
+  };
+
+  /**
+   * Initiate forgot password flow
+   */
+  const forgotPassword = async (email) => {
+    try {
+      const res = await authService.resetPassword(email);
+      return { success: true, nextStep: res.nextStep };
+    } catch (error) {
+      return { success: false, error: error.message || "Failed to request password reset." };
+    }
+  };
+
+  /**
+   * Confirm password reset
+   */
+  const confirmPasswordReset = async (email, code, newPassword) => {
+    try {
+      await authService.confirmResetPassword(email, code, newPassword);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message || "Failed to reset password." };
+    }
+  };
+
+  /**
+   * Real Cognito Sign Out
+   */
+  const logout = async () => {
+    try {
+      await authService.signOut();
+    } catch (e) {
+      console.warn("Cognito signout warning:", e);
+    }
+    setCurrentUser(null);
+    setIsAuthenticated(false);
+  };
+
+  // Derive roles strictly from Cognito groups or user profile
+  const groups = currentUser?.groups || [];
+  const isAdmin = groups.includes("Admin") || currentUser?.role === "ADMIN";
+  const isFaculty = groups.includes("Faculty") || currentUser?.role === "STAFF" || currentUser?.role === "FACULTY";
+  const isStaff = isFaculty || isAdmin;
+  const isStudent = (!isAdmin && !isFaculty) || groups.includes("Student") || currentUser?.role === "STUDENT";
 
   return (
     <AuthContext.Provider
       value={{
         currentUser,
         isAuthenticated,
+        isLoadingAuth,
         isAdmin,
         isStaff,
+        isFaculty,
         isStudent,
         login,
         register,
+        verifyEmail,
+        resendVerificationCode,
+        forgotPassword,
+        confirmPasswordReset,
+        confirmNewPassword,
         logout,
-        switchUser,
-        availableUsers: initialUsers,
       }}
     >
       {children}
@@ -111,3 +253,5 @@ export const useAuth = () => {
   if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 };
+
+export default AuthContext;

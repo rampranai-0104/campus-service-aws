@@ -1,37 +1,7 @@
 // High-fidelity Initial Seed Data for CampusRoom — Matching Stitch Project Designs
 
-export const initialUsers = [
-  {
-    id: "usr-faculty-01",
-    name: "Dr. Sarah Chen",
-    email: "sarah.chen@university.edu",
-    role: "STAFF",
-    roleLabel: "Faculty Researcher",
-    department: "Computer Science & AI",
-    studentOrStaffId: "FAC-88421",
-    avatarUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuDcWR-fkRv-h1CNbotkRRWFNn_co3Jt2dTdHeLkiZScvrE47XXKoBexskdVhmupKj3hCCwl6EkmmsS6xHXsNopXP4E3yk4UTAC2hBlHd0fFU1R313_tw7dcpW-qKUPkLMp2HNE9VccxdI2ORknjryaDlpWNfwgkYp6YPddOL92jRltcklCsS20eqPLdNdVgP67mbDC7_u0V-HPDXU_j5aj5Yk1yA9Xo5zkeUeHMpPwSWR1mxqemSWXB8w",
-  },
-  {
-    id: "usr-student-01",
-    name: "Alex Rivera",
-    email: "alex.rivera@university.edu",
-    role: "STUDENT",
-    roleLabel: "Senior Undergrad Student",
-    department: "Software Engineering",
-    studentOrStaffId: "STU-10943",
-    avatarUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80",
-  },
-  {
-    id: "usr-admin-01",
-    name: "Marcus Bradley",
-    email: "marcus.bradley@university.edu",
-    role: "ADMIN",
-    roleLabel: "Campus Facilities Director",
-    department: "Academic Infrastructure & Operations",
-    studentOrStaffId: "ADM-00412",
-    avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80",
-  },
-];
+// Demo persona logins removed in favor of real AWS Cognito authentication
+export const initialUsers = [];
 
 export const initialRooms = [
   {
