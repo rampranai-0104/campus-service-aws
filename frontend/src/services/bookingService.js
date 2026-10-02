@@ -1,5 +1,4 @@
 import { generateClient } from "aws-amplify/api";
-import { initialBookings } from "../aws/mockData.js";
 
 let apiClient = null;
 const getClient = () => {
@@ -61,10 +60,10 @@ export const bookingService = {
       if (Array.isArray(res?.data)) {
         return res.data.map((item) => formatBookingForUI(item, roomCatalog));
       }
-      return initialBookings;
+      return [];
     } catch (e) {
-      console.warn("AppSync Booking.list() failed, falling back to local bookings:", e);
-      return initialBookings;
+      console.warn("AppSync Booking.list() failed:", e);
+      throw e;
     }
   },
 

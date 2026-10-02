@@ -17,15 +17,13 @@ export const UpcomingBookingsTable = () => {
   const filteredBookings = bookings.filter((b) => {
     if (activeTab === "all") return b.status !== "CANCELLED";
     if (activeTab === "confirmed") return b.status === "CONFIRMED";
-    if (activeTab === "pending") return b.syncState === "PENDING_LOCAL" || b.status === "PENDING";
+    if (activeTab === "pending") return b.status === "PENDING";
     return true;
   });
 
   const allCount = bookings.filter((b) => b.status !== "CANCELLED").length;
   const confirmedCount = bookings.filter((b) => b.status === "CONFIRMED").length;
-  const pendingCount = bookings.filter(
-    (b) => b.syncState === "PENDING_LOCAL" || b.status === "PENDING"
-  ).length;
+  const pendingCount = bookings.filter((b) => b.status === "PENDING").length;
 
   const handleCheckIn = (booking) => {
     showToast(`Checked in to ${booking.roomName}! Door latch unlocked.`, "success");
@@ -68,10 +66,10 @@ export const UpcomingBookingsTable = () => {
       >
         <div>
           <h2 style={{ fontSize: "18px", fontWeight: "700", color: "var(--on-surface)", margin: 0 }}>
-            Upcoming Bookings &amp; Offline Queue
+            Upcoming Reservations &amp; Active Sessions
           </h2>
           <p style={{ fontSize: "12px", color: "var(--on-surface-variant)", margin: "2px 0 0" }}>
-            Real-time status of reservations stored in AWS Amplify DataStore
+            Real-time status of reservations synchronized with AWS AppSync
           </p>
         </div>
 

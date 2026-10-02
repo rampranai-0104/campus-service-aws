@@ -17,6 +17,17 @@ const schema = a.schema({
     'REJECTED',
     'CONFLICT',
   ]),
+  TicketCategory: a.enum([
+    'Facilities',
+    'Equipment',
+    'Maintenance',
+    'Cleaning',
+    'Electrical',
+    'Network',
+    'Other',
+  ]),
+  TicketPriority: a.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']),
+  TicketStatus: a.enum(['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']),
 
   BookingResult: a.customType({
     success: a.boolean().required(),
@@ -97,6 +108,28 @@ const schema = a.schema({
       message: a.string().required(),
       type: a.string().required(),
       read: a.boolean().default(false),
+    })
+    .secondaryIndexes((index) => [
+      index('userId'),
+    ])
+    .authorization((allow) => [
+      allow.ownerDefinedIn('userId'),
+      allow.group('Admin'),
+    ]),
+
+  SupportTicket: a
+    .model({
+      userId: a.string().required(),
+      userName: a.string().required(),
+      userRole: a.string().required(),
+      roomId: a.string(),
+      roomName: a.string(),
+      category: a.ref('TicketCategory').required(),
+      subject: a.string().required(),
+      description: a.string().required(),
+      priority: a.ref('TicketPriority').required(),
+      status: a.ref('TicketStatus').required(),
+      adminResponse: a.string(),
     })
     .secondaryIndexes((index) => [
       index('userId'),

@@ -3,7 +3,7 @@ import { useBooking } from "../context/BookingContext";
 import StatusBadge from "../components/common/StatusBadge";
 import RoomModal from "../components/admin/RoomModal";
 
-export const RoomManagementPage = ({ onSelectRoom }) => {
+export const RoomManagementPage = ({ onSelectRoom: _onSelectRoom }) => {
   const { rooms, toggleRoomMaintenance, addRoom, updateRoom } = useBooking();
 
   const [search, setSearch] = useState("");
@@ -23,6 +23,8 @@ export const RoomManagementPage = ({ onSelectRoom }) => {
     }
     return true;
   });
+
+  const availableBuildings = Array.from(new Set(rooms.map((r) => r.building).filter(Boolean))).sort();
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px" }} className="room-management-page animate-fade-in">
@@ -68,12 +70,11 @@ export const RoomManagementPage = ({ onSelectRoom }) => {
           style={{ width: "auto" }}
         >
           <option value="all">All Complexes</option>
-          <option value="Turing Computing">Turing Computing</option>
-          <option value="Science & Engineering">Science & Engineering</option>
-          <option value="Central Library">Central Library</option>
-          <option value="Baker Humanities">Baker Humanities</option>
-          <option value="BioTech">BioTech Center</option>
-          <option value="Environmental">Environmental Sciences</option>
+          {availableBuildings.map((b) => (
+            <option key={b} value={b}>
+              {b}
+            </option>
+          ))}
         </select>
 
         <span style={{ fontSize: "12px", color: "var(--outline)", marginLeft: "auto" }}>

@@ -1,5 +1,4 @@
 import { generateClient } from "aws-amplify/api";
-import { initialNotifications } from "../aws/mockData.js";
 
 let apiClient = null;
 const getClient = () => {
@@ -35,12 +34,10 @@ export const notificationService = {
       if (items.length > 0) {
         return items.map(formatNotification);
       }
-
-      // Fallback to initial seed notifications filtered by user if any
-      return initialNotifications.filter((n) => !n.userId || n.userId === userId);
+      return [];
     } catch (e) {
-      console.warn("AppSync Notification.list() failed, using fallback:", e);
-      return initialNotifications.filter((n) => !n.userId || n.userId === userId);
+      console.warn("AppSync Notification.list() failed:", e);
+      return [];
     }
   },
 
@@ -63,17 +60,7 @@ export const notificationService = {
     } catch (e) {
       console.warn("Failed to create AppSync notification:", e);
     }
-
-    return {
-      id: `notif-${Date.now()}`,
-      userId,
-      title,
-      message,
-      type,
-      isRead: false,
-      timestamp: "Just now",
-      createdAt: new Date().toISOString(),
-    };
+    return null;
   },
 
   /**

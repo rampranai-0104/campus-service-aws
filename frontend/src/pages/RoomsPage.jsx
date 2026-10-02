@@ -13,6 +13,9 @@ export const RoomsPage = ({ onSelectRoom, onNavigate }) => {
   const [viewMode, setViewMode] = useState("grid"); // grid or list
   const [bookingModalRoom, setBookingModalRoom] = useState(null);
 
+  const availableBuildings = Array.from(new Set(rooms.map((r) => r.building).filter(Boolean))).sort();
+  const availableTypes = Array.from(new Set(rooms.map((r) => r.roomType).filter(Boolean))).sort();
+
   const availableKit = [
     "Projector",
     "High-Speed Wi-Fi 6E",
@@ -110,11 +113,11 @@ export const RoomsPage = ({ onSelectRoom, onNavigate }) => {
             className="animate-pulse"
           />
           <span style={{ fontFamily: "var(--font-mono)", fontWeight: "700", color: "var(--primary-container)" }}>
-            AWS Amplify DataStore Synced
+            AWS AppSync Live Synced
           </span>
           <span style={{ color: "var(--outline)" }}>•</span>
           <span style={{ color: "var(--on-surface-variant)" }}>
-            {rooms.length} rooms indexed across 14 campus sectors
+            {rooms.length} rooms indexed across {availableBuildings.length || 1} campus sectors
           </span>
         </div>
 
@@ -316,12 +319,11 @@ export const RoomsPage = ({ onSelectRoom, onNavigate }) => {
               onChange={(e) => setBuildingFilter(e.target.value)}
             >
               <option value="all">All Buildings (All Campus)</option>
-              <option value="Turing Computing">Turing Computing Complex</option>
-              <option value="Science & Engineering">Science & Engineering Hall</option>
-              <option value="Central Library">Central Library</option>
-              <option value="Baker Humanities">Baker Humanities Center</option>
-              <option value="BioTech">BioTech Research Center</option>
-              <option value="Environmental">Environmental Sciences</option>
+              {availableBuildings.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -335,12 +337,12 @@ export const RoomsPage = ({ onSelectRoom, onNavigate }) => {
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
             >
-              <option value="all">All Types (Pods, Labs, Halls)</option>
-              <option value="STUDY_POD">Study Pods (1-4 cap)</option>
-              <option value="LAB">Computer &amp; Research Labs</option>
-              <option value="SEMINAR">Seminar &amp; Meeting Rooms</option>
-              <option value="AUDITORIUM">Auditoriums &amp; Halls</option>
-              <option value="CONFERENCE">Conference Suites</option>
+              <option value="all">All Types (All Categories)</option>
+              {availableTypes.map((t) => (
+                <option key={t} value={t}>
+                  {t.replace(/_/g, " ")}
+                </option>
+              ))}
             </select>
           </div>
 

@@ -16,7 +16,9 @@ export const MyBookingsPage = ({ onNavigate }) => {
 
   const todayStr = new Date().toISOString().split("T")[0];
 
-  const myBookings = bookings.filter((b) => b.userId === currentUser?.id);
+  const myBookings = bookings.filter(
+    (b) => b.userId === currentUser?.userId || b.userId === currentUser?.id || b.userId === currentUser?.username
+  );
 
   const filteredBookings = myBookings.filter((b) => {
     if (activeTab === "upcoming") {
@@ -32,9 +34,6 @@ export const MyBookingsPage = ({ onNavigate }) => {
     if (activeTab === "cancelled") {
       return b.status === "CANCELLED" || b.status === "REJECTED";
     }
-    if (activeTab === "offline") {
-      return b.syncState === "PENDING_LOCAL";
-    }
     return true;
   });
 
@@ -49,8 +48,6 @@ export const MyBookingsPage = ({ onNavigate }) => {
   const cancelledCount = myBookings.filter(
     (b) => b.status === "CANCELLED" || b.status === "REJECTED"
   ).length;
-
-  const offlineCount = myBookings.filter((b) => b.syncState === "PENDING_LOCAL").length;
 
   const handleConfirmCancel = () => {
     if (bookingToCancel) {
@@ -150,29 +147,6 @@ export const MyBookingsPage = ({ onNavigate }) => {
         >
           Cancelled ({cancelledCount})
         </button>
-
-        {offlineCount > 0 && (
-          <button
-            onClick={() => setActiveTab("offline")}
-            style={{
-              padding: "8px 16px",
-              borderRadius: "8px",
-              fontSize: "13px",
-              fontWeight: activeTab === "offline" ? "700" : "500",
-              backgroundColor: activeTab === "offline" ? "var(--surface-container-lowest)" : "transparent",
-              color: activeTab === "offline" ? "var(--amber-800)" : "var(--on-surface-variant)",
-              boxShadow: activeTab === "offline" ? "var(--shadow-xs)" : "none",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
-          >
-            <span>Offline Queued</span>
-            <span style={{ padding: "1px 6px", borderRadius: "9999px", backgroundColor: "#fef3c7", color: "#92400e", fontSize: "11px", fontWeight: "700" }}>
-              {offlineCount}
-            </span>
-          </button>
-        )}
       </div>
 
       {/* Bookings List Cards */}

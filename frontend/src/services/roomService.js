@@ -1,7 +1,6 @@
 import { generateClient } from "aws-amplify/api";
 import { uploadData, getUrl } from "aws-amplify/storage";
 import { getCurrentUser, fetchAuthSession } from "aws-amplify/auth";
-import { initialRooms } from "../aws/mockData.js";
 
 let apiClient = null;
 const getClient = () => {
@@ -156,19 +155,11 @@ export const roomService = {
         return formatted;
       }
 
-      // If AppSync genuinely returned 0 items with no errors, return empty array
-      if (appSyncErrors.length === 0) {
-        console.info("[DIAGNOSTIC] AppSync Room.list() succeeded with 0 rooms in database.");
-        return [];
-      }
-
-      // If there were AppSync errors preventing data retrieval, use fallback
-      console.error("[DIAGNOSTIC] AppSync Room.list() encountered errors, falling back to mock catalog:", appSyncErrors);
-      return initialRooms;
+      // AppSync returned 0 items
+      return [];
     } catch (error) {
       console.error("[DIAGNOSTIC] AppSync Room.list() exception / authorization failure:", error);
-      console.warn("AppSync Room.list() failed, falling back to cached room catalog:", error);
-      return initialRooms;
+      throw error;
     }
   },
 
@@ -185,8 +176,7 @@ export const roomService = {
     } catch (e) {
       console.warn("AppSync Room.get() failed:", e);
     }
-    const fallback = initialRooms.find((r) => r.id === id || r.code === id);
-    return fallback || null;
+    return null;
   },
 
   /**
@@ -274,28 +264,8 @@ export const roomService = {
    * Seed initial rooms to AppSync if table is empty (invoked by Admin)
    */
   async seedInitialRoomsIfEmpty() {
-    try {
-      const client = getClient();
-      const current = await client.models.Room.list({ limit: 1 });
-      if ((current?.data || []).length === 0) {
-        console.info("Database room catalog is empty. Seeding initial campus rooms...");
-        for (const r of initialRooms) {
-          await client.models.Room.create({
-            roomNumber: r.code,
-            name: r.name,
-            building: r.building,
-            floor: r.floor,
-            capacity: r.capacity,
-            description: r.description,
-            facilities: r.facilities,
-            image: r.image,
-            status: r.status,
-          });
-        }
-      }
-    } catch (e) {
-      console.warn("Auto-seeding rooms skipped or not authorized:", e);
-    }
+    // Rooms are managed through AppSync directly. No-op.
+    return;
   },
 };
 

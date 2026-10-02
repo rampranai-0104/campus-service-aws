@@ -5,7 +5,7 @@ import { awsConfig } from "../aws/amplifyConfig";
 
 export const SettingsPage = () => {
   const { currentUser } = useAuth();
-  const { isOfflineSim, toggleOfflineSim, resetAllData } = useBooking();
+  const { isOnline, syncStatus, lastSyncTime, loadData, isLoadingData } = useBooking();
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px", maxWidth: "800px", margin: "0 auto" }} className="settings-page animate-fade-in">
@@ -91,16 +91,16 @@ export const SettingsPage = () => {
               cloud
             </span>
             <h3 style={{ fontSize: "17px", fontWeight: "700", margin: 0 }}>
-              AWS Amplify Hosted Backend Architecture
+              AWS Amplify Live Backend Architecture
             </h3>
           </div>
           <span style={{ padding: "3px 10px", borderRadius: "9999px", backgroundColor: "#ecfdf5", color: "#059669", fontSize: "11px", fontWeight: "700" }}>
-            Ready for Mobile App (Phase 2)
+            Live Production (Gen 2)
           </span>
         </div>
 
         <p style={{ fontSize: "13px", color: "var(--on-surface-variant)", margin: 0 }}>
-          This full-stack web application is wired to AWS cloud services via Amazon Cognito, AWS AppSync GraphQL, DynamoDB tables, and Amazon S3. The data model is explicitly designed with offline sync readiness for the upcoming React Native mobile application.
+          This full-stack application is connected directly to live AWS cloud services via Amazon Cognito, AWS AppSync GraphQL, Amazon DynamoDB, and Amazon S3. Real-time updates use native AppSync GraphQL subscriptions.
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -108,7 +108,7 @@ export const SettingsPage = () => {
             { label: "AWS Region", value: awsConfig.aws_project_region, icon: "public" },
             { label: "Amazon Cognito User Pool", value: awsConfig.aws_user_pools_id, icon: "lock" },
             { label: "AppSync GraphQL Endpoint", value: awsConfig.aws_appsync_graphqlEndpoint, icon: "hub" },
-            { label: "Amazon DynamoDB Sync", value: "Table: Room-Table, Booking-Table (Conflict Detection Enabled)", icon: "database" },
+            { label: "Amazon DynamoDB Tables", value: "Room, Booking, SupportTicket (Live Cloud Data)", icon: "database" },
             { label: "Amazon S3 Storage Bucket", value: awsConfig.aws_user_files_s3_bucket, icon: "photo_library" },
           ].map((item, idx) => (
             <div
@@ -137,7 +137,7 @@ export const SettingsPage = () => {
         </div>
       </div>
 
-      {/* Offline Mode & Cache Reset */}
+      {/* Live Data Synchronization & Network Status */}
       <div
         style={{
           borderRadius: "16px",
@@ -150,46 +150,45 @@ export const SettingsPage = () => {
           gap: "16px",
         }}
       >
-        <h3 style={{ fontSize: "17px", fontWeight: "700", margin: 0 }}>
-          Testing &amp; Simulation Controls
+        <h3 style={{ fontSize: "17px", fontWeight: "700", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+          <span className="material-symbols-outlined" style={{ fontSize: "20px", color: isOnline ? "#10b981" : "#f59e0b" }}>
+            {isOnline ? "wifi" : "wifi_off"}
+          </span>
+          Live Data Synchronization &amp; Health
         </h3>
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
           <div>
             <div style={{ fontSize: "14px", fontWeight: "700", color: "var(--on-surface)" }}>
-              DataStore Offline Simulation
+              Connection Status: <span style={{ color: isOnline ? "#059669" : "#b45309" }}>{isOnline ? syncStatus : "OFFLINE"}</span>
             </div>
             <div style={{ fontSize: "12px", color: "var(--on-surface-variant)" }}>
-              Simulates losing internet connection and queueing mutations into local IndexedDB storage.
+              Last synchronized: {lastSyncTime ? new Date(lastSyncTime).toLocaleTimeString() : "Never"}
             </div>
           </div>
 
           <button
-            onClick={toggleOfflineSim}
-            className={isOfflineSim ? "btn-primary" : "btn-secondary"}
-            style={{ height: "36px" }}
+            onClick={() => loadData?.()}
+            disabled={isLoadingData || !isOnline}
+            className="btn-primary"
+            style={{ height: "36px", display: "flex", alignItems: "center", gap: "6px" }}
           >
-            {isOfflineSim ? "Offline Sim Active (Click to Reconnect)" : "Enable Offline Simulation"}
+            <span className={`material-symbols-outlined ${isLoadingData ? "animate-spin" : ""}`} style={{ fontSize: "16px" }}>
+              sync
+            </span>
+            <span>{isLoadingData ? "Syncing..." : "Refetch Live AWS Data"}</span>
           </button>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "12px", paddingTop: "12px", borderTop: "1px solid #f1f5f9" }}>
-          <div>
-            <div style={{ fontSize: "14px", fontWeight: "700", color: "var(--on-surface)" }}>
-              Reset Demo Seed Data
-            </div>
-            <div style={{ fontSize: "12px", color: "var(--on-surface-variant)" }}>
-              Purges local storage and restores default test rooms, bookings, and notifications.
-            </div>
+        <div style={{ paddingTop: "12px", borderTop: "1px solid #f1f5f9", fontSize: "12px", color: "var(--on-surface-variant)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <span className="material-symbols-outlined text-primary" style={{ fontSize: "16px" }}>
+              sensors
+            </span>
+            <span>
+              Real-time GraphQL subscriptions active on <strong>Room</strong>, <strong>Booking</strong>, and <strong>SupportTicket</strong> models.
+            </span>
           </div>
-
-          <button
-            onClick={resetAllData}
-            className="btn-destructive"
-            style={{ height: "36px" }}
-          >
-            Reset All Demo Data
-          </button>
         </div>
       </div>
     </div>

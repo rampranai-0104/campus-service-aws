@@ -113,8 +113,8 @@ export const BookingDetailsPage = ({ booking, onBack, onNavigate }) => {
             <span style={{ fontSize: "13px", fontWeight: "700" }}>{booking.attendeeCount} persons</span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ fontSize: "13px", color: "var(--on-surface-variant)" }}>DataStore Sync State:</span>
-            <span style={{ fontSize: "13px", fontWeight: "700", color: "#059669" }}>{booking.syncState}</span>
+            <span style={{ fontSize: "13px", color: "var(--on-surface-variant)" }}>Backend Sync Status:</span>
+            <span style={{ fontSize: "13px", fontWeight: "700", color: "#059669" }}>{booking.syncState || "LIVE • AWS AppSync"}</span>
           </div>
         </div>
 

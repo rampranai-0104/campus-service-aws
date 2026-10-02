@@ -1,33 +1,41 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useBooking } from "../../context/BookingContext";
 
 export const QuickBookingWidget = ({ prefill }) => {
-  const { rooms, createBooking, checkAvailability, isOfflineSim } = useBooking();
+  const { rooms = [], createBooking, checkAvailability, isOnline } = useBooking();
 
-  const [building, setBuilding] = useState("Turing Computing Complex");
+  // Dynamic buildings from live rooms
+  const buildings = useMemo(() => {
+    const set = new Set();
+    rooms.forEach((r) => {
+      if (r.building) set.add(r.building);
+    });
+    return Array.from(set).sort();
+  }, [rooms]);
+
+  const [building, setBuilding] = useState(() => buildings[0] || "");
   const [roomId, setRoomId] = useState("");
   const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
   const [startTime, setStartTime] = useState("14:00");
   const [endTime, setEndTime] = useState("15:30");
-  const [purpose, setPurpose] = useState("Senior Thesis Working Group");
-  const [attendees, setAttendees] = useState(6);
+  const [purpose, setPurpose] = useState("");
+  const [attendees, setAttendees] = useState(4);
   const [validationResult, setValidationResult] = useState({ isAvailable: true, message: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Available buildings
-  const buildings = [
-    "Turing Computing Complex",
-    "Science & Engineering Hall",
-    "Central Library",
-    "Baker Humanities Center",
-    "BioTech Research Center",
-    "Environmental Sciences",
-  ];
+  // Sync building when buildings list loads
+  useEffect(() => {
+    if (!building && buildings.length > 0) {
+      setBuilding(buildings[0]);
+    }
+  }, [buildings, building]);
 
   // Filter rooms for chosen building
-  const availableRooms = rooms.filter(
-    (r) => r.building === building && r.status !== "DISABLED"
-  );
+  const availableRooms = useMemo(() => {
+    return rooms.filter(
+      (r) => (building === "all" || !building || r.building === building) && r.status !== "DISABLED"
+    );
+  }, [rooms, building]);
 
   // Auto-select first room in building if current room is not in it
   useEffect(() => {
@@ -36,8 +44,10 @@ export const QuickBookingWidget = ({ prefill }) => {
       if (!match) {
         setRoomId(availableRooms[0].id);
       }
+    } else {
+      setRoomId("");
     }
-  }, [building, availableRooms, roomId]);
+  }, [availableRooms, roomId]);
 
   // Support prefill if user clicked Quick Reserve on a room
   useEffect(() => {
@@ -57,11 +67,11 @@ export const QuickBookingWidget = ({ prefill }) => {
       const res = checkAvailability(roomId, date, startTime, endTime);
       setValidationResult(res);
     }
-  }, [roomId, date, startTime, endTime]);
+  }, [roomId, date, startTime, endTime, checkAvailability]);
 
   const selectedRoom = rooms.find((r) => r.id === roomId);
 
-  const handleSubmit = async (e, forceOffline = false) => {
+  const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     if (!selectedRoom) return;
 
@@ -75,7 +85,7 @@ export const QuickBookingWidget = ({ prefill }) => {
         date,
         startTime,
         endTime,
-        purpose: purpose || "Academic Meeting",
+        purpose: purpose.trim() || "Academic Study Session",
         attendeeCount: parseInt(attendees, 10) || 1,
         capacity: selectedRoom.capacity,
       });
@@ -113,21 +123,21 @@ export const QuickBookingWidget = ({ prefill }) => {
           style={{
             padding: "2px 8px",
             borderRadius: "6px",
-            backgroundColor: "var(--surface-container-high)",
-            color: "var(--primary-container)",
+            backgroundColor: "#ecfdf5",
+            color: "#059669",
             fontSize: "11px",
             fontWeight: "700",
           }}
         >
-          DataStore Sync
+          AWS AppSync Live
         </span>
       </div>
 
-      <form onSubmit={(e) => handleSubmit(e, false)} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
         {/* Building Selector */}
         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
           <label style={{ fontSize: "11px", fontWeight: "700", color: "var(--on-surface-variant)", textTransform: "uppercase" }}>
-            Campus & Building
+            Campus &amp; Building
           </label>
           <select
             className="form-select"
@@ -151,30 +161,36 @@ export const QuickBookingWidget = ({ prefill }) => {
             className="form-select"
             value={roomId}
             onChange={(e) => setRoomId(e.target.value)}
+            disabled={availableRooms.length === 0}
           >
-            {availableRooms.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name} (Cap: {r.capacity})
-              </option>
-            ))}
+            {availableRooms.length === 0 ? (
+              <option value="">No rooms available in this building</option>
+            ) : (
+              availableRooms.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name} ({r.code}) — Cap: {r.capacity} {r.status === "MAINTENANCE" ? "[MAINT]" : ""}
+                </option>
+              ))
+            )}
           </select>
         </div>
 
-        {/* Date Selector */}
+        {/* Date */}
         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
           <label style={{ fontSize: "11px", fontWeight: "700", color: "var(--on-surface-variant)", textTransform: "uppercase" }}>
-            Reservation Date
+            Date
           </label>
           <input
             type="date"
             className="form-input"
             value={date}
+            min={new Date().toISOString().split("T")[0]}
             onChange={(e) => setDate(e.target.value)}
             required
           />
         </div>
 
-        {/* Time Window Split */}
+        {/* Start / End Time Row */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
             <label style={{ fontSize: "11px", fontWeight: "700", color: "var(--on-surface-variant)", textTransform: "uppercase" }}>
@@ -188,6 +204,7 @@ export const QuickBookingWidget = ({ prefill }) => {
               required
             />
           </div>
+
           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
             <label style={{ fontSize: "11px", fontWeight: "700", color: "var(--on-surface-variant)", textTransform: "uppercase" }}>
               End Time
@@ -205,115 +222,87 @@ export const QuickBookingWidget = ({ prefill }) => {
         {/* Purpose */}
         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
           <label style={{ fontSize: "11px", fontWeight: "700", color: "var(--on-surface-variant)", textTransform: "uppercase" }}>
-            Reservation Purpose
+            Session Purpose
           </label>
           <input
             type="text"
             className="form-input"
-            placeholder="e.g. Senior Thesis Working Group"
+            placeholder="e.g. Collaborative Capstone Meeting"
             value={purpose}
             onChange={(e) => setPurpose(e.target.value)}
             required
           />
         </div>
 
-        {/* Attendees */}
+        {/* Headcount */}
         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
             <label style={{ fontSize: "11px", fontWeight: "700", color: "var(--on-surface-variant)", textTransform: "uppercase" }}>
               Expected Attendees
             </label>
-            <span style={{ fontSize: "11px", fontFamily: "var(--font-mono)", color: "var(--outline)" }}>
-              Max: {selectedRoom?.capacity || 20}
-            </span>
+            {selectedRoom && (
+              <span style={{ fontSize: "11px", color: "var(--outline)" }}>
+                Max Capacity: {selectedRoom.capacity}
+              </span>
+            )}
           </div>
           <input
             type="number"
-            className="form-input"
             min="1"
-            max={selectedRoom?.capacity || 100}
+            max={selectedRoom ? selectedRoom.capacity : 100}
+            className="form-input"
             value={attendees}
             onChange={(e) => setAttendees(e.target.value)}
+            required
           />
         </div>
 
-        {/* Dynamic Collision / Validation Pill */}
+        {/* Conflict Verification Indicator */}
         <div
           style={{
             padding: "10px 12px",
             borderRadius: "8px",
-            backgroundColor: validationResult.isAvailable ? "#ecfdf5" : "#fee2e2",
-            border: `1px solid ${validationResult.isAvailable ? "#a7f3d0" : "#fca5a5"}`,
-            color: validationResult.isAvailable ? "#065f46" : "#991b1b",
+            backgroundColor: validationResult.isAvailable ? "#ecfdf5" : "#fef2f2",
+            border: `1px solid ${validationResult.isAvailable ? "#a7f3d0" : "#fecaca"}`,
             display: "flex",
-            alignItems: "flex-start",
+            alignItems: "center",
             gap: "8px",
-            fontSize: "12px",
+            marginTop: "2px",
           }}
         >
           <span
             className="material-symbols-outlined"
-            style={{
-              fontSize: "18px",
-              color: validationResult.isAvailable ? "#059669" : "#dc2626",
-              marginTop: "1px",
-              flexShrink: 0,
-            }}
+            style={{ fontSize: "18px", color: validationResult.isAvailable ? "#059669" : "#dc2626" }}
           >
             {validationResult.isAvailable ? "check_circle" : "error"}
           </span>
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <span style={{ fontWeight: "700" }}>
-              {validationResult.isAvailable ? "Slot Available" : "Collision Warning"}
-            </span>
-            <span style={{ fontSize: "11px", lineHeight: "1.3", opacity: 0.9 }}>
-              {validationResult.message ||
-                "No conflict detected in local IndexedDB or AWS Cloud index."}
-            </span>
-          </div>
+          <span
+            style={{
+              fontSize: "12px",
+              color: validationResult.isAvailable ? "#065f46" : "#991b1b",
+              lineHeight: "1.3",
+            }}
+          >
+            {validationResult.message || "Zero conflict detected in live AWS AppSync schedule."}
+          </span>
         </div>
 
-        {/* Action Buttons */}
+        {/* Action Button */}
         <div style={{ display: "flex", flexDirection: "column", gap: "8px", paddingTop: "4px" }}>
           <button
             type="submit"
-            disabled={!validationResult.isAvailable || isSubmitting}
+            disabled={!validationResult.isAvailable || isSubmitting || !isOnline}
             className="btn-primary"
             style={{
               width: "100%",
-              opacity: !validationResult.isAvailable ? 0.6 : 1,
-              cursor: !validationResult.isAvailable ? "not-allowed" : "pointer",
+              opacity: !validationResult.isAvailable || isSubmitting || !isOnline ? 0.6 : 1,
+              cursor: !validationResult.isAvailable || isSubmitting || !isOnline ? "not-allowed" : "pointer",
             }}
           >
             <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
               verified
             </span>
-            <span>{isSubmitting ? "Reserving..." : "Instant Reserve Room"}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={(e) => handleSubmit(e, true)}
-            style={{
-              width: "100%",
-              height: "36px",
-              borderRadius: "8px",
-              backgroundColor: "var(--surface-container-low)",
-              color: "var(--on-surface-variant)",
-              fontSize: "12px",
-              fontWeight: "600",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "6px",
-              border: "1px solid #e2e8f0",
-            }}
-            className="hover:bg-slate-100 hover:text-slate-900"
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
-              save_as
-            </span>
-            <span>Save to Offline Queue</span>
+            <span>{isSubmitting ? "Reserving..." : "Reserve Room"}</span>
           </button>
         </div>
       </form>

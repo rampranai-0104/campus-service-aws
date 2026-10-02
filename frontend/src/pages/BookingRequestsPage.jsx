@@ -4,7 +4,7 @@ import StatusBadge from "../components/common/StatusBadge";
 import RequestActionModal from "../components/admin/RequestActionModal";
 
 export const BookingRequestsPage = () => {
-  const { bookings } = useBooking();
+  const { bookings, loadData, isLoadingData } = useBooking();
   const [filter, setFilter] = useState("PENDING");
   const [activeAction, setActiveAction] = useState(null); // { booking, type: 'approve' | 'reject' | 'reassign' }
 
@@ -33,33 +33,47 @@ export const BookingRequestsPage = () => {
           </p>
         </div>
 
-        {/* Filter Tabs */}
-        <div style={{ display: "flex", backgroundColor: "var(--surface-container-high)", padding: "3px", borderRadius: "10px" }}>
-          {["PENDING", "CONFIRMED", "REJECTED", "ALL"].map((st) => (
-            <button
-              key={st}
-              onClick={() => setFilter(st)}
-              style={{
-                padding: "6px 14px",
-                borderRadius: "7px",
-                fontSize: "12px",
-                fontWeight: filter === st ? "700" : "500",
-                backgroundColor: filter === st ? "var(--surface-container-lowest)" : "transparent",
-                color: filter === st ? "var(--primary-container)" : "var(--on-surface-variant)",
-                boxShadow: filter === st ? "var(--shadow-xs)" : "none",
-                display: "flex",
-                alignItems: "center",
-                gap: "5px",
-              }}
-            >
-              <span>{st}</span>
-              {st === "PENDING" && pendingCount > 0 && (
-                <span style={{ padding: "1px 6px", borderRadius: "9999px", backgroundColor: "var(--secondary-container)", color: "var(--on-secondary-fixed)", fontSize: "10px", fontWeight: "700" }}>
-                  {pendingCount}
-                </span>
-              )}
-            </button>
-          ))}
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+          <button
+            onClick={() => loadData?.()}
+            disabled={isLoadingData}
+            className="btn-secondary"
+            style={{ height: "36px", display: "flex", alignItems: "center", gap: "6px", fontSize: "12px" }}
+          >
+            <span className={`material-symbols-outlined ${isLoadingData ? "animate-spin" : ""}`} style={{ fontSize: "16px" }}>
+              sync
+            </span>
+            <span>{isLoadingData ? "Refreshing..." : "Refresh Queue"}</span>
+          </button>
+
+          {/* Filter Tabs */}
+          <div style={{ display: "flex", backgroundColor: "var(--surface-container-high)", padding: "3px", borderRadius: "10px" }}>
+            {["PENDING", "CONFIRMED", "REJECTED", "ALL"].map((st) => (
+              <button
+                key={st}
+                onClick={() => setFilter(st)}
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: "7px",
+                  fontSize: "12px",
+                  fontWeight: filter === st ? "700" : "500",
+                  backgroundColor: filter === st ? "var(--surface-container-lowest)" : "transparent",
+                  color: filter === st ? "var(--primary-container)" : "var(--on-surface-variant)",
+                  boxShadow: filter === st ? "var(--shadow-xs)" : "none",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "5px",
+                }}
+              >
+                <span>{st}</span>
+                {st === "PENDING" && pendingCount > 0 && (
+                  <span style={{ padding: "1px 6px", borderRadius: "9999px", backgroundColor: "var(--secondary-container)", color: "var(--on-secondary-fixed)", fontSize: "10px", fontWeight: "700" }}>
+                    {pendingCount}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -120,6 +134,11 @@ export const BookingRequestsPage = () => {
                         <span style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--on-surface-variant)" }}>
                           {b.startTime} – {b.endTime}
                         </span>
+                        {b.createdAt && (
+                          <span style={{ fontSize: "10px", color: "var(--outline)", marginTop: "2px" }}>
+                            Req: {new Date(b.createdAt).toLocaleDateString()} {new Date(b.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        )}
                       </div>
                     </td>
 

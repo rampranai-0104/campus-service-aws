@@ -3,6 +3,7 @@ import { useBooking } from "../context/BookingContext";
 import { useAuth } from "../context/AuthContext";
 import StatusBadge from "../components/common/StatusBadge";
 import KeycardPassModal from "../components/booking/KeycardPassModal";
+import RequestSubmittedModal from "../components/booking/RequestSubmittedModal";
 
 export const RoomDetailsPage = ({ room, onBack, onNavigate }) => {
   const { bookings, createBooking, checkAvailability } = useBooking();
@@ -519,10 +520,12 @@ export const RoomDetailsPage = ({ room, onBack, onNavigate }) => {
                 </span>
                 <span>
                   {isSubmitting
-                    ? "Confirming..."
+                    ? (currentUser?.role === "Admin" ? "Booking..." : "Submitting...")
                     : room?.status === "MAINTENANCE"
                     ? "Space Under Maintenance"
-                    : "Book Room"}
+                    : currentUser?.role === "Admin"
+                    ? "Confirm Booking"
+                    : "Submit Reservation Request"}
                 </span>
               </button>
             </form>
@@ -530,12 +533,26 @@ export const RoomDetailsPage = ({ room, onBack, onNavigate }) => {
         </div>
       </div>
 
-      {/* Confirmation Pass Modal */}
-      {confirmedBooking && (
+      {/* Confirmation / Pending Modal */}
+      {confirmedBooking && confirmedBooking.status === "PENDING" && (
+        <RequestSubmittedModal
+          booking={confirmedBooking}
+          isOpen={true}
+          onClose={() => {
+            setConfirmedBooking(null);
+            if (onNavigate) onNavigate("my-bookings");
+          }}
+        />
+      )}
+
+      {confirmedBooking && confirmedBooking.status === "CONFIRMED" && (
         <KeycardPassModal
           booking={confirmedBooking}
           isOpen={true}
-          onClose={() => setConfirmedBooking(null)}
+          onClose={() => {
+            setConfirmedBooking(null);
+            if (onNavigate) onNavigate("my-bookings");
+          }}
         />
       )}
 

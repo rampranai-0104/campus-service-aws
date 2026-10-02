@@ -16,8 +16,19 @@ export const NotificationProvider = ({ children }) => {
   }, [currentUser]);
 
   useEffect(() => {
-    refreshNotifications();
-  }, [refreshNotifications]);
+    let isSubscribed = true;
+    const load = async () => {
+      const userId = currentUser?.id || currentUser?.userId;
+      const list = await notificationService.getNotifications(userId);
+      if (isSubscribed) {
+        setNotifications(list);
+      }
+    };
+    load();
+    return () => {
+      isSubscribed = false;
+    };
+  }, [currentUser]);
 
   const showToast = (message, type = "success", duration = 4000) => {
     const id = `toast-${Date.now()}-${Math.random()}`;

@@ -1,17 +1,49 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { useBooking } from "../../context/BookingContext";
+import { parseTimeToMinutes } from "../../services/analyticsService";
 
 export const AllocationProgress = () => {
-  const { rooms } = useBooking();
+  const { rooms = [], bookings = [], syncStatus } = useBooking();
 
-  const total = rooms.length || 128;
-  const availableCount = rooms.filter((r) => r.status === "AVAILABLE").length;
-  const maintCount = rooms.filter((r) => r.status === "MAINTENANCE").length;
-  const occupiedCount = total - availableCount - maintCount;
+  const total = rooms.length;
+  const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-  const availPct = Math.round((availableCount / total) * 100);
-  const occupiedPct = Math.round((occupiedCount / total) * 100);
-  const maintPct = Math.round((maintCount / total) * 100);
+  // Find confirmed bookings currently in session right now
+  const activeNowBookings = useMemo(() => {
+    return bookings.filter((b) => {
+      if (b.status !== "CONFIRMED") return false;
+      if (b.date !== todayStr) return false;
+      const startMin = parseTimeToMinutes(b.startTime);
+      const endMin = parseTimeToMinutes(b.endTime);
+      return startMin <= currentMinutes && endMin > currentMinutes;
+    });
+  }, [bookings, todayStr, currentMinutes]);
+
+  const occupiedRoomIds = useMemo(
+    () => new Set(activeNowBookings.map((b) => b.roomId)),
+    [activeNowBookings]
+  );
+
+  const maintCount = useMemo(
+    () => rooms.filter((r) => r.status === "MAINTENANCE").length,
+    [rooms]
+  );
+
+  const occupiedCount = useMemo(
+    () => rooms.filter((r) => r.status !== "MAINTENANCE" && occupiedRoomIds.has(r.id)).length,
+    [rooms, occupiedRoomIds]
+  );
+
+  const availableCount = useMemo(
+    () => Math.max(0, total - occupiedCount - maintCount),
+    [total, occupiedCount, maintCount]
+  );
+
+  const availPct = total > 0 ? Math.round((availableCount / total) * 100) : 0;
+  const occupiedPct = total > 0 ? Math.round((occupiedCount / total) * 100) : 0;
+  const maintPct = total > 0 ? Math.round((maintCount / total) * 100) : 0;
 
   return (
     <div
@@ -28,10 +60,10 @@ export const AllocationProgress = () => {
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <h3 style={{ fontSize: "16px", fontWeight: "700", color: "var(--on-surface)", margin: 0 }}>
-          Campus Room Allocation
+          Campus Space Allocation (Live)
         </h3>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: "12px", color: "var(--on-surface-variant)" }}>
-          {total} Total
+          {total} Total Rooms
         </span>
       </div>
 
@@ -41,7 +73,7 @@ export const AllocationProgress = () => {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "12px" }}>
             <span style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: "600", color: "var(--on-surface)" }}>
               <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "var(--emerald-500)" }} />
-              Available Spaces
+              Available for Reservation
             </span>
             <span style={{ fontFamily: "var(--font-mono)", color: "var(--on-surface-variant)" }}>
               {availableCount} rooms ({availPct}%)
@@ -57,7 +89,7 @@ export const AllocationProgress = () => {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "12px" }}>
             <span style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: "600", color: "var(--on-surface)" }}>
               <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "var(--primary-container)" }} />
-              Occupied / In-Session
+              Occupied / In-Session Now
             </span>
             <span style={{ fontFamily: "var(--font-mono)", color: "var(--on-surface-variant)" }}>
               {occupiedCount} rooms ({occupiedPct}%)
@@ -73,7 +105,7 @@ export const AllocationProgress = () => {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: "12px" }}>
             <span style={{ display: "flex", alignItems: "center", gap: "6px", fontWeight: "600", color: "var(--on-surface)" }}>
               <span style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "var(--amber-500)" }} />
-              Maintenance / Sanitization
+              Under Maintenance
             </span>
             <span style={{ fontFamily: "var(--font-mono)", color: "var(--on-surface-variant)" }}>
               {maintCount} rooms ({maintPct}%)
@@ -97,10 +129,10 @@ export const AllocationProgress = () => {
         }}
       >
         <span>
-          Campus IoT Gateway: <strong style={{ color: "#059669" }}>Nominal</strong>
+          AppSync Telemetry: <strong style={{ color: "#059669" }}>{syncStatus}</strong>
         </span>
-        <span style={{ color: "var(--primary-container)", cursor: "pointer", fontWeight: "600" }}>
-          Sensor Diagnostics →
+        <span style={{ fontFamily: "var(--font-mono)", color: "var(--outline)" }}>
+          {activeNowBookings.length} session{activeNowBookings.length === 1 ? "" : "s"} active right now
         </span>
       </div>
     </div>

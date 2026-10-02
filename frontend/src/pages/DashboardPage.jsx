@@ -10,7 +10,7 @@ import UpcomingBookingsTable from "../components/dashboard/UpcomingBookingsTable
 import KeycardPassModal from "../components/booking/KeycardPassModal";
 
 export const DashboardPage = ({ onNavigate, onSelectRoom }) => {
-  const { rooms, bookings, toggleOfflineSim, isOfflineSim } = useBooking();
+  const { rooms, bookings } = useBooking();
   const { currentUser } = useAuth();
 
   const [widgetPrefill, setWidgetPrefill] = useState(null);
@@ -18,7 +18,7 @@ export const DashboardPage = ({ onNavigate, onSelectRoom }) => {
 
   const availableRooms = rooms.filter((r) => r.status === "AVAILABLE");
   const myBookings = bookings.filter(
-    (b) => b.userId === currentUser?.id && b.status !== "CANCELLED"
+    (b) => (b.userId === currentUser?.userId || b.userId === currentUser?.id || b.userId === currentUser?.username) && b.status !== "CANCELLED"
   );
   const nextBooking = myBookings[0] || null;
 
@@ -43,6 +43,14 @@ export const DashboardPage = ({ onNavigate, onSelectRoom }) => {
     if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
+  const todayStr = new Date().toISOString().split("T")[0];
+  const todayConfirmed = bookings.filter((b) => b.date === todayStr && b.status === "CONFIRMED");
+  const pendingRequests = bookings.filter((b) => b.status === "PENDING");
+  const availPct = rooms.length > 0 ? Math.round((availableRooms.length / rooms.length) * 100) : 0;
+
+  // Unique buildings
+  const buildingsCount = new Set(rooms.map((r) => r.building).filter(Boolean)).size;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "24px" }} className="dashboard-page animate-fade-in">
       {/* Page Header Area */}
@@ -64,70 +72,22 @@ export const DashboardPage = ({ onNavigate, onSelectRoom }) => {
               style={{
                 padding: "2px 8px",
                 borderRadius: "9999px",
-                backgroundColor: "var(--surface-container-high)",
-                color: "var(--primary-container)",
+                backgroundColor: "#ecfdf5",
+                color: "#059669",
                 fontSize: "11px",
                 fontWeight: "700",
               }}
             >
-              v4.2 Live
+              LIVE AWS
             </span>
           </div>
           <p style={{ fontSize: "14px", color: "var(--on-surface-variant)", margin: "4px 0 0" }}>
-            Real-time room availability, quick booking, and schedule overview across North &amp; South Campus.
+            Real-time room availability, quick booking, and schedule overview across campus complexes.
           </p>
         </div>
 
         {/* Action Toolbar */}
         <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-          {/* Offline Toggle button */}
-          <div
-            onClick={toggleOfflineSim}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              padding: "6px 12px",
-              borderRadius: "8px",
-              backgroundColor: "var(--surface-container-lowest)",
-              border: "1px solid #e2e8f0",
-              boxShadow: "var(--shadow-xs)",
-              cursor: "pointer",
-              fontSize: "13px",
-              fontWeight: "600",
-            }}
-            title="Toggle Amplify DataStore Offline Simulation"
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: "18px", color: "var(--on-surface-variant)" }}>
-              wifi_tethering
-            </span>
-            <span>Offline Sim</span>
-            <div
-              style={{
-                width: "32px",
-                height: "18px",
-                borderRadius: "9999px",
-                backgroundColor: isOfflineSim ? "var(--amber-500)" : "#cbd5e1",
-                position: "relative",
-                transition: "background-color 0.2s ease",
-              }}
-            >
-              <div
-                style={{
-                  width: "14px",
-                  height: "14px",
-                  borderRadius: "50%",
-                  backgroundColor: "#ffffff",
-                  position: "absolute",
-                  top: "2px",
-                  left: isOfflineSim ? "16px" : "2px",
-                  transition: "left 0.2s ease",
-                  boxShadow: "0 1px 2px rgba(0,0,0,0.2)",
-                }}
-              />
-            </div>
-          </div>
-
           {/* Schedule Button */}
           <button
             onClick={() => onNavigate("calendar")}
@@ -155,7 +115,7 @@ export const DashboardPage = ({ onNavigate, onSelectRoom }) => {
         </div>
       </div>
 
-      {/* Top Statistics Row (4 Cards) */}
+      {/* Top Statistics Row (4 Cards) - All Live AWS Data */}
       <div
         style={{
           display: "grid",
@@ -165,11 +125,11 @@ export const DashboardPage = ({ onNavigate, onSelectRoom }) => {
       >
         <StatCard
           title="Total Campus Rooms"
-          value="128"
+          value={rooms.length}
           unit="Rooms"
           icon="domain"
-          trend="↑ 4 new additions"
-          actionText="14 Buildings →"
+          trend={`${buildingsCount} campus complex${buildingsCount === 1 ? "" : "es"}`}
+          actionText={`${buildingsCount} Complexes →`}
           onAction={() => onNavigate("rooms")}
         />
 
@@ -178,18 +138,18 @@ export const DashboardPage = ({ onNavigate, onSelectRoom }) => {
           value={availableRooms.length}
           unit="Rooms"
           icon="meeting_room"
-          trend="● 65.6% immediate capacity"
+          trend={`● ${availPct}% immediate capacity`}
           actionText="Filter open →"
           onAction={() => onNavigate("rooms")}
         />
 
         <StatCard
           title="Today's Reservations"
-          value={bookings.filter((b) => b.status === "CONFIRMED").length + 28}
+          value={todayConfirmed.length}
           unit="Bookings"
           icon="history_edu"
-          trend="18 Confirmed • 4 Active"
-          actionText="89% Check-in"
+          trend={`${todayConfirmed.length} Confirmed • ${pendingRequests.length} Pending`}
+          actionText="My Bookings →"
           onAction={() => onNavigate("my-bookings")}
         />
 

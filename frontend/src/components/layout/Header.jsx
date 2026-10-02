@@ -5,7 +5,7 @@ import { useNotifications } from "../../context/NotificationContext";
 
 export const Header = ({ onOpenMobile, onNavigate }) => {
   const { currentUser } = useAuth();
-  const { isOfflineSim, toggleOfflineSim, searchQuery, setSearchQuery } = useBooking();
+  const { isOnline, syncStatus, searchQuery, setSearchQuery } = useBooking();
   const { unreadCount } = useNotifications();
 
   const handleSearchSubmit = (e) => {
@@ -67,24 +67,22 @@ export const Header = ({ onOpenMobile, onNavigate }) => {
 
       {/* Right: AWS Sync State, Global Search, Offline Toggle, Notifications & Persona Switcher */}
       <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-        {/* AWS Amplify Live Synced Pill */}
+        {/* Truthful AWS Amplify AppSync Connection Pill */}
         <div
-          onClick={toggleOfflineSim}
           style={{
             display: "flex",
             alignItems: "center",
             gap: "6px",
             padding: "5px 12px",
             borderRadius: "9999px",
-            backgroundColor: isOfflineSim ? "var(--amber-100)" : "var(--surface-container-lowest)",
-            border: `1px solid ${isOfflineSim ? "var(--amber-500)" : "#e2e8f0"}`,
+            backgroundColor: isOnline ? "var(--surface-container-lowest)" : "#fef2f2",
+            border: `1px solid ${isOnline ? "#e2e8f0" : "#fecaca"}`,
             boxShadow: "var(--shadow-xs)",
-            cursor: "pointer",
             fontSize: "12px",
             fontWeight: "600",
-            color: isOfflineSim ? "var(--amber-800)" : "var(--on-surface)",
+            color: isOnline ? "var(--on-surface)" : "#991b1b",
           }}
-          title="Click to toggle Amplify DataStore Offline Simulation"
+          title={`Network status: ${syncStatus} (Amazon AppSync + DynamoDB)`}
           className="aws-sync-pill"
         >
           <span
@@ -92,12 +90,12 @@ export const Header = ({ onOpenMobile, onNavigate }) => {
               width: "7px",
               height: "7px",
               borderRadius: "50%",
-              backgroundColor: isOfflineSim ? "var(--amber-500)" : "#10b981",
+              backgroundColor: isOnline ? "#10b981" : "#ef4444",
             }}
-            className={isOfflineSim ? "" : "animate-pulse"}
+            className={isOnline ? "" : "animate-pulse"}
           />
           <span className="hidden sm:inline">
-            {isOfflineSim ? "Offline Simulation Active" : "Online • Synced (AWS AppSync)"}
+            {isOnline ? "ONLINE • SYNCED" : "OFFLINE"}
           </span>
         </div>
 

@@ -6,24 +6,20 @@ import { awsConfig } from "../../aws/amplifyConfig";
 
 export const Sidebar = ({ activePath, onNavigate, mobileOpen, onCloseMobile }) => {
   const { currentUser, isAdmin, logout } = useAuth();
-  const { bookings, isOfflineSim } = useBooking();
+  const { bookings, isOnline, syncStatus, tickets = [] } = useBooking();
   const { unreadCount } = useNotifications();
 
-  // Active bookings count for this user
+  // Active bookings count for this user (Student / Faculty)
   const myBookingsCount = bookings.filter(
-    (b) => b.userId === currentUser?.id && b.status !== "CANCELLED"
+    (b) => b.userId === currentUser?.userId && b.status !== "CANCELLED"
   ).length;
 
   const pendingRequestsCount = bookings.filter((b) => b.status === "PENDING").length;
+  const openTicketsCount = tickets.filter((t) => t.status === "OPEN" || t.status === "IN_PROGRESS").length;
 
   const handleNav = (path) => {
     onNavigate(path);
     if (onCloseMobile) onCloseMobile();
-  };
-
-  const navItemClass = (path) => {
-    const isActive = activePath === path;
-    return `nav-item ${isActive ? "active" : ""}`;
   };
 
   return (
@@ -155,48 +151,52 @@ export const Sidebar = ({ activePath, onNavigate, mobileOpen, onCloseMobile }) =
               </div>
             </button>
 
-            <button
-              onClick={() => handleNav("quick-book")}
-              className={`nav-button ${activePath === "quick-book" ? "active" : ""}`}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span className="material-symbols-outlined" style={{ fontSize: "19px" }}>
-                  bolt
-                </span>
-                <span>Quick Book</span>
-              </div>
-            </button>
+            {!isAdmin && (
+              <button
+                onClick={() => handleNav("quick-book")}
+                className={`nav-button ${activePath === "quick-book" ? "active" : ""}`}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: "19px" }}>
+                    bolt
+                  </span>
+                  <span>Quick Book</span>
+                </div>
+              </button>
+            )}
 
             {/* Management Section */}
             <div style={{ padding: "14px 8px 3px", fontSize: "11px", fontWeight: "700", color: "var(--outline)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
               Management
             </div>
 
-            <button
-              onClick={() => handleNav("my-bookings")}
-              className={`nav-button ${activePath === "my-bookings" ? "active" : ""}`}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                <span className="material-symbols-outlined" style={{ fontSize: "19px" }}>
-                  bookmark_added
-                </span>
-                <span>My Bookings</span>
-              </div>
-              {myBookingsCount > 0 && (
-                <span
-                  style={{
-                    padding: "1px 7px",
-                    borderRadius: "9999px",
-                    backgroundColor: "var(--primary-fixed)",
-                    color: "var(--on-primary-fixed)",
-                    fontSize: "11px",
-                    fontWeight: "600",
-                  }}
-                >
-                  {myBookingsCount}
-                </span>
-              )}
-            </button>
+            {!isAdmin && (
+              <button
+                onClick={() => handleNav("my-bookings")}
+                className={`nav-button ${activePath === "my-bookings" ? "active" : ""}`}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: "19px" }}>
+                    bookmark_added
+                  </span>
+                  <span>My Bookings</span>
+                </div>
+                {myBookingsCount > 0 && (
+                  <span
+                    style={{
+                      padding: "1px 7px",
+                      borderRadius: "9999px",
+                      backgroundColor: "var(--primary-fixed)",
+                      color: "var(--on-primary-fixed)",
+                      fontSize: "11px",
+                      fontWeight: "600",
+                    }}
+                  >
+                    {myBookingsCount}
+                  </span>
+                )}
+              </button>
+            )}
 
             <button
               onClick={() => handleNav("notifications")}
@@ -325,42 +325,56 @@ export const Sidebar = ({ activePath, onNavigate, mobileOpen, onCloseMobile }) =
                 </span>
                 <span>Help & Support</span>
               </div>
+              {openTicketsCount > 0 && (
+                <span
+                  style={{
+                    padding: "1px 6px",
+                    borderRadius: "9999px",
+                    backgroundColor: "var(--primary-container)",
+                    color: "#ffffff",
+                    fontSize: "11px",
+                    fontWeight: "700",
+                  }}
+                >
+                  {openTicketsCount}
+                </span>
+              )}
             </button>
           </nav>
         </div>
 
-        {/* Bottom Profile & AWS DataStore Status */}
+        {/* Bottom Profile & AWS Connection Status */}
         <div style={{ padding: "12px", display: "flex", flexDirection: "column", gap: "8px", borderTop: "1px solid #f8fafc" }}>
-          {/* DataStore Status Pill */}
+          {/* Truthful AWS AppSync Status Pill */}
           <div
             style={{
               padding: "10px 12px",
               borderRadius: "12px",
-              backgroundColor: isOfflineSim ? "var(--amber-50)" : "var(--surface-container-low)",
+              backgroundColor: !isOnline ? "var(--amber-50)" : "var(--surface-container-low)",
               display: "flex",
               flexDirection: "column",
               gap: "2px",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontSize: "11px", fontWeight: "700", color: isOfflineSim ? "var(--amber-800)" : "var(--on-surface-variant)" }}>
-                Amplify DataStore
+              <span style={{ fontSize: "11px", fontWeight: "700", color: !isOnline ? "var(--amber-800)" : "var(--on-surface-variant)" }}>
+                AWS AppSync Live
               </span>
               <span
                 style={{
                   width: "7px",
                   height: "7px",
                   borderRadius: "50%",
-                  backgroundColor: isOfflineSim ? "var(--amber-500)" : "#10b981",
+                  backgroundColor: !isOnline ? "var(--amber-500)" : syncStatus === "SYNCING" ? "#3b82f6" : "#10b981",
                 }}
-                className={isOfflineSim ? "" : "animate-pulse"}
+                className={syncStatus === "SYNCING" ? "animate-pulse" : ""}
               />
             </div>
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: isOfflineSim ? "#b45309" : "var(--on-surface)", fontWeight: "500" }}>
-              {isOfflineSim ? "Offline Sim Active" : `Connected (${awsConfig.aws_project_region})`}
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: !isOnline ? "#b45309" : "var(--on-surface)", fontWeight: "500" }}>
+              {!isOnline ? "OFFLINE" : `${syncStatus || "ONLINE • SYNCED"} (${awsConfig.aws_project_region})`}
             </span>
             <span style={{ fontSize: "10px", color: "var(--on-surface-variant)" }}>
-              {isOfflineSim ? "Mutations stored in IndexedDB" : "Auto-sync 20s ago"}
+              {!isOnline ? "No network connection" : "Real-time subscriptions active"}
             </span>
           </div>
 

@@ -43,7 +43,7 @@ export const NotificationsPage = () => {
             Notifications &amp; System Alerts
           </h1>
           <p style={{ fontSize: "14px", color: "var(--on-surface-variant)", margin: "4px 0 0" }}>
-            Real-time reservation confirmations, keycard PIN dispatches, and Amplify DataStore sync logs.
+            Real-time reservation confirmations, keycard PIN dispatches, and AppSync live updates.
           </p>
         </div>
 

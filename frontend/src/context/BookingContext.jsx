@@ -1,11 +1,21 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
+import { generateClient } from "aws-amplify/api";
 import { roomService } from "../services/roomService";
 import { bookingService } from "../services/bookingService";
 import { notificationService } from "../services/notificationService";
+import { supportTicketService } from "../services/supportTicketService";
 import { useAuth } from "./AuthContext";
 import { useNotifications } from "./NotificationContext";
 
 const BookingContext = createContext();
+
+let apiClient = null;
+const getClient = () => {
+  if (!apiClient) {
+    apiClient = generateClient();
+  }
+  return apiClient;
+};
 
 export const BookingProvider = ({ children }) => {
   const { currentUser, isAuthenticated, isLoadingAuth, isAdmin } = useAuth();
@@ -13,9 +23,16 @@ export const BookingProvider = ({ children }) => {
 
   const [rooms, setRooms] = useState([]);
   const [bookings, setBookings] = useState([]);
+  const [tickets, setTickets] = useState([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
-  const [isOfflineSim, setIsOfflineSim] = useState(false);
-  const [offlineQueue, setOfflineQueue] = useState([]);
+  const [dataError, setDataError] = useState(null);
+
+  // Truthful Network and Sync State (No fake DataStore simulation)
+  const [isOnline, setIsOnline] = useState(() => (typeof navigator !== "undefined" ? navigator.onLine : true));
+  const [syncStatus, setSyncStatus] = useState("ONLINE • SYNCED"); // 'ONLINE • SYNCED' | 'SYNCING' | 'OFFLINE' | 'ERROR'
+  const [lastSyncTime, setLastSyncTime] = useState(() => new Date());
+
+  // Search and filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [activeBuildingFilter, setActiveBuildingFilter] = useState("all");
   const [activeTypeFilter, setActiveTypeFilter] = useState("all");
@@ -23,51 +40,165 @@ export const BookingProvider = ({ children }) => {
   const [selectedAmenities, setSelectedAmenities] = useState([]);
   const [quickBookPrefill, setQuickBookPrefill] = useState(null);
 
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  /**
+   * Unified, reliable data fetcher for all AWS live data
+   */
   const loadData = useCallback(async () => {
-    setIsLoadingData(true);
+    if (!navigator.onLine) {
+      setSyncStatus("OFFLINE");
+      return;
+    }
+
+    setSyncStatus("SYNCING");
+    setDataError(null);
+
     try {
       const loadedRooms = await roomService.getRooms();
+      if (!isMountedRef.current) return;
       setRooms(loadedRooms);
 
       const loadedBookings = await bookingService.getBookings(loadedRooms);
+      if (!isMountedRef.current) return;
       setBookings(loadedBookings);
 
-      // If user is Admin, auto-seed catalog to AppSync if empty
-      if (isAdmin && loadedRooms.length > 0) {
-        roomService.seedInitialRoomsIfEmpty().catch(console.warn);
+      if (isAuthenticated && currentUser) {
+        const loadedTickets = await supportTicketService.getTickets(
+          currentUser.userId,
+          isAdmin
+        );
+        if (isMountedRef.current) {
+          setTickets(loadedTickets);
+        }
       }
-    } catch (e) {
-      console.warn("Error loading rooms and bookings from AWS services:", e);
-    } finally {
-      setIsLoadingData(false);
-    }
-  }, [isAdmin]);
 
+      setSyncStatus("ONLINE • SYNCED");
+      setLastSyncTime(new Date());
+    } catch (e) {
+      console.error("[AWS Live Data Load Error]:", e);
+      if (isMountedRef.current) {
+        setDataError(e.message || "Failed to load live records from AWS.");
+        setSyncStatus("ERROR");
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setIsLoadingData(false);
+      }
+    }
+  }, [isAuthenticated, currentUser, isAdmin]);
+
+  // Track online/offline browser events truthfully
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      setSyncStatus("SYNCING");
+      loadData();
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      setSyncStatus("OFFLINE");
+      showToast("Network connection lost. Offline state detected.", "warning");
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [loadData, showToast]);
+
+  // Load data as soon as authentication finishes loading
   useEffect(() => {
     if (!isLoadingAuth) {
       loadData();
     }
-  }, [loadData, currentUser?.userId, currentUser?.email, isAuthenticated, isLoadingAuth]);
+  }, [loadData, isLoadingAuth, isAuthenticated, currentUser?.userId]);
 
-  const toggleOfflineSim = () => {
-    const nextState = !isOfflineSim;
-    setIsOfflineSim(nextState);
+  /**
+   * Real-time AppSync Subscriptions for live updates
+   */
+  useEffect(() => {
+    if (!isAuthenticated) return;
 
-    if (nextState) {
-      showToast("Offline Simulation Mode Enabled: Writes queued in client state.", "warning");
-    } else {
-      showToast("Online Synced: AWS AppSync connected & local queue reconciled!", "success");
-      loadData();
+    let subBookingCreate;
+    let subBookingUpdate;
+    let subBookingDelete;
+    let subRoomUpdate;
+    let subTicketCreate;
+    let subTicketUpdate;
+
+    try {
+      const client = getClient();
+
+      if (client.models?.Booking) {
+        subBookingCreate = client.models.Booking.onCreate().subscribe({
+          next: () => loadData(),
+          error: (err) => console.warn("AppSync Booking.onCreate subscription error:", err),
+        });
+        subBookingUpdate = client.models.Booking.onUpdate().subscribe({
+          next: () => loadData(),
+          error: (err) => console.warn("AppSync Booking.onUpdate subscription error:", err),
+        });
+        subBookingDelete = client.models.Booking.onDelete().subscribe({
+          next: () => loadData(),
+          error: (err) => console.warn("AppSync Booking.onDelete subscription error:", err),
+        });
+      }
+
+      if (client.models?.Room) {
+        subRoomUpdate = client.models.Room.onUpdate().subscribe({
+          next: () => loadData(),
+          error: (err) => console.warn("AppSync Room.onUpdate subscription error:", err),
+        });
+      }
+
+      if (client.models?.SupportTicket) {
+        subTicketCreate = client.models.SupportTicket.onCreate().subscribe({
+          next: () => loadData(),
+          error: (err) => console.warn("AppSync SupportTicket.onCreate subscription error:", err),
+        });
+        subTicketUpdate = client.models.SupportTicket.onUpdate().subscribe({
+          next: () => loadData(),
+          error: (err) => console.warn("AppSync SupportTicket.onUpdate subscription error:", err),
+        });
+      }
+    } catch (err) {
+      console.warn("Could not establish real-time subscriptions:", err);
     }
-    refreshNotifications();
-  };
 
+    return () => {
+      subBookingCreate?.unsubscribe();
+      subBookingUpdate?.unsubscribe();
+      subBookingDelete?.unsubscribe();
+      subRoomUpdate?.unsubscribe();
+      subTicketCreate?.unsubscribe();
+      subTicketUpdate?.unsubscribe();
+    };
+  }, [isAuthenticated, loadData]);
+
+  /**
+   * Create a booking with conflict verification
+   */
   const createBooking = async (bookingData) => {
+    if (!isOnline) {
+      showToast("Cannot create reservation while offline. Please reconnect.", "error");
+      return { success: false, error: "Network offline." };
+    }
+
     const payload = {
       ...bookingData,
-      userId: currentUser?.id || currentUser?.userId || "campus-user",
+      userId: currentUser?.userId || currentUser?.id || "campus-user",
       userName: currentUser?.name || "University User",
-      userRole: currentUser?.role || "STUDENT",
+      userRole: currentUser?.role === "ADMIN" ? "Admin" : currentUser?.role === "STAFF" ? "Faculty" : "Student",
     };
 
     // Client-side availability pre-check
@@ -84,7 +215,6 @@ export const BookingProvider = ({ children }) => {
       return { success: false, error: availability.message };
     }
 
-    // Call live AppSync conflict mutation / API
     const result = await bookingService.createBooking(payload, rooms);
 
     if (!result.success) {
@@ -98,7 +228,7 @@ export const BookingProvider = ({ children }) => {
       await notificationService.createNotification({
         userId: payload.userId,
         title: "Reservation Request Submitted",
-        message: `Request for ${result.booking.roomName} on ${result.booking.date} (${result.booking.startTime} - ${result.booking.endTime}) submitted. Awaiting Facilities review.`,
+        message: `Request for ${result.booking.roomName} on ${result.booking.date} (${result.booking.startTime} – ${result.booking.endTime}) submitted. Awaiting review.`,
         type: "BOOKING_REQUESTED",
       });
 
@@ -129,6 +259,9 @@ export const BookingProvider = ({ children }) => {
     return result;
   };
 
+  /**
+   * Cancel an existing booking
+   */
   const cancelBooking = async (id, _reason = "") => {
     const targetBooking = bookings.find((b) => b.id === id);
     const success = await bookingService.cancelBooking(id);
@@ -153,16 +286,19 @@ export const BookingProvider = ({ children }) => {
     return false;
   };
 
-  const approveBooking = async (id, _adminNotes = "") => {
+  /**
+   * Approve a pending booking (Admin only)
+   */
+  const approveBooking = async (id, adminNotes = "") => {
     const targetBooking = bookings.find((b) => b.id === id);
-    const result = await bookingService.approveBooking(id, _adminNotes);
+    const result = await bookingService.approveBooking(id, adminNotes);
 
     if (result.success) {
       if (targetBooking?.userId) {
         await notificationService.createNotification({
           userId: targetBooking.userId,
           title: "Request Approved",
-          message: `Your reservation request for ${targetBooking.roomName} on ${targetBooking.date} was approved by Facilities. Access PIN: ${result.pin || targetBooking.keycardPin}.`,
+          message: `Your reservation request for ${targetBooking.roomName} on ${targetBooking.date} was approved. Access PIN: ${result.pin || targetBooking.keycardPin}.`,
           type: "REQUEST_APPROVED",
         });
       }
@@ -177,6 +313,9 @@ export const BookingProvider = ({ children }) => {
     return result;
   };
 
+  /**
+   * Reject a pending booking (Admin only)
+   */
   const rejectBooking = async (id, reason = "") => {
     const targetBooking = bookings.find((b) => b.id === id);
     const result = await bookingService.rejectBooking(id, reason);
@@ -186,7 +325,7 @@ export const BookingProvider = ({ children }) => {
         await notificationService.createNotification({
           userId: targetBooking.userId,
           title: "Booking Request Rejected",
-          message: `Your reservation request for ${targetBooking.roomName} was not approved: ${reason || "Room required for departmental examination."}`,
+          message: `Your reservation request for ${targetBooking.roomName} was not approved: ${reason || "Room unavailable."}`,
           type: "REQUEST_REJECTED",
         });
       }
@@ -201,6 +340,9 @@ export const BookingProvider = ({ children }) => {
     return result;
   };
 
+  /**
+   * Reassign a booking (Admin only)
+   */
   const reassignBooking = async (id, newRoomId) => {
     const targetBooking = bookings.find((b) => b.id === id);
     const result = await bookingService.reassignBooking(id, newRoomId);
@@ -226,6 +368,9 @@ export const BookingProvider = ({ children }) => {
     return result;
   };
 
+  /**
+   * Add a new room (Admin only)
+   */
   const addRoom = async (roomData) => {
     try {
       const newRoom = await roomService.createRoom(roomData);
@@ -238,6 +383,9 @@ export const BookingProvider = ({ children }) => {
     }
   };
 
+  /**
+   * Update an existing room (Admin only)
+   */
   const updateRoom = async (id, updates) => {
     try {
       const updated = await roomService.updateRoom(id, updates);
@@ -250,6 +398,9 @@ export const BookingProvider = ({ children }) => {
     }
   };
 
+  /**
+   * Toggle room maintenance state (Admin only)
+   */
   const toggleRoomMaintenance = async (roomId) => {
     const room = rooms.find((r) => r.id === roomId);
     if (!room) return null;
@@ -284,6 +435,43 @@ export const BookingProvider = ({ children }) => {
     }
   };
 
+  /**
+   * Support Tickets operations
+   */
+  const createSupportTicket = async (ticketInput) => {
+    try {
+      const newTicket = await supportTicketService.createTicket(ticketInput);
+      await loadData();
+      showToast(`Support Ticket #${newTicket.id.slice(-6).toUpperCase()} submitted to Facilities!`, "success");
+      return { success: true, ticket: newTicket };
+    } catch (err) {
+      showToast(err.message || "Failed to submit support ticket.", "error");
+      return { success: false, error: err.message };
+    }
+  };
+
+  const updateSupportTicket = async (ticketId, { status, adminResponse }) => {
+    try {
+      const result = await supportTicketService.updateTicketStatus(ticketId, {
+        status,
+        adminResponse,
+      });
+      if (result.success) {
+        await loadData();
+        showToast(`Ticket status updated to ${status}.`, "success");
+      } else {
+        showToast(result.error || "Failed to update ticket.", "error");
+      }
+      return result;
+    } catch (err) {
+      showToast(err.message || "Failed to update ticket.", "error");
+      return { success: false, error: err.message };
+    }
+  };
+
+  /**
+   * Conflict checking helper
+   */
   const checkAvailability = (roomId, date, startTime, endTime, excludeBookingId = null) => {
     const targetRoom = rooms.find((r) => r.id === roomId);
     if (targetRoom && targetRoom.status === "MAINTENANCE") {
@@ -296,20 +484,18 @@ export const BookingProvider = ({ children }) => {
     return bookingService.checkAvailability(roomId, date, startTime, endTime, bookings, excludeBookingId);
   };
 
-  const resetAllData = async () => {
-    await loadData();
-    showToast("Refreshed live data from AWS Amplify backend.", "info");
-  };
-
   return (
     <BookingContext.Provider
       value={{
         rooms,
         bookings,
+        tickets,
         isLoadingData,
-        isOfflineSim,
-        offlineQueue,
-        toggleOfflineSim,
+        dataError,
+        isOnline,
+        syncStatus,
+        lastSyncTime,
+        refreshData: loadData,
         createBooking,
         cancelBooking,
         approveBooking,
@@ -318,6 +504,8 @@ export const BookingProvider = ({ children }) => {
         addRoom,
         updateRoom,
         toggleRoomMaintenance,
+        createSupportTicket,
+        updateSupportTicket,
         checkAvailability,
         searchQuery,
         setSearchQuery,
@@ -331,8 +519,6 @@ export const BookingProvider = ({ children }) => {
         setSelectedAmenities,
         quickBookPrefill,
         setQuickBookPrefill,
-        resetAllData,
-        refreshData: loadData,
       }}
     >
       {children}
