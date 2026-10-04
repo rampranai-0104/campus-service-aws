@@ -1,165 +1,183 @@
-# 🏫 CampusRoom
+# CampusRoom — Campus Space Booking & Management System
 
-## Smart Campus Space Booking & Facility Management Platform
+[![AWS Amplify Gen 2](https://img.shields.io/badge/AWS_Amplify-Gen_2-FF9900?logo=aws-amplify&logoColor=white)](https://aws.amazon.com/amplify/)
+[![AWS AppSync](https://img.shields.io/badge/AWS_AppSync-GraphQL-E7157B?logo=graphql&logoColor=white)](https://aws.amazon.com/appsync/)
+[![Amazon Cognito](https://img.shields.io/badge/Amazon_Cognito-Authentication-232F3E?logo=amazon-aws&logoColor=white)](https://aws.amazon.com/cognito/)
+[![Amazon DynamoDB](https://img.shields.io/badge/Amazon_DynamoDB-Serverless_NoSQL-4053D6?logo=amazon-dynamodb&logoColor=white)](https://aws.amazon.com/dynamodb/)
+[![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react&logoColor=black)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-8.3-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
+[![React Native](https://img.shields.io/badge/React_Native-Expo_SDK_57-000020?logo=expo&logoColor=white)](https://expo.dev/)
+[![EAS Build](https://img.shields.io/badge/EAS_Build-Android_APK-000000?logo=expo&logoColor=white)](https://expo.dev/eas)
 
-> A centralized, secure, real-time, and offline-capable platform for managing campus rooms, reservations, maintenance, support requests, and facility utilization.
+## Overview
 
----
+**CampusRoom** is a full-stack campus space booking and facility management platform designed for universities and educational institutions.
 
-<p align="center">
+The platform enables students, faculty, and administrators to discover available campus spaces, manage reservations, prevent scheduling conflicts, report facility issues, and monitor room utilization through web and mobile applications.
 
-![AWS](https://img.shields.io/badge/AWS-Serverless-FF9900?logo=amazon-aws&logoColor=white)
-![Amplify](https://img.shields.io/badge/AWS-Amplify_Gen_2-FF9900?logo=aws-amplify&logoColor=white)
-![AppSync](https://img.shields.io/badge/AWS-AppSync-E7157B?logo=graphql&logoColor=white)
-![Cognito](https://img.shields.io/badge/AWS-Cognito-232F3E?logo=amazon-aws&logoColor=white)
-![DynamoDB](https://img.shields.io/badge/AWS-DynamoDB-4053D6?logo=amazon-dynamodb&logoColor=white)
-![Lambda](https://img.shields.io/badge/AWS-Lambda-FF9900?logo=aws-lambda&logoColor=white)
-![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
-![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
-![React Native](https://img.shields.io/badge/React_Native-Expo-000020?logo=expo&logoColor=white)
+The system is built using a **serverless AWS architecture** with a modern React web application and an offline-first React Native mobile application.
 
-</p>
+### Key Capabilities
 
----
+- Secure authentication and role-based access control
+- Real-time room availability and reservation management
+- Server-side booking conflict detection
+- Administrative booking approval and rejection
+- Room maintenance and reassignment workflows
+- Facility support ticket management
+- Real-time notifications and status updates
+- Room utilization and operational analytics
+- Offline-first mobile booking and ticket workflows
+- Automatic synchronization after network recovery
+- Standalone Android APK distribution using Expo EAS
 
-# 📌 Table of Contents
+### Project Information
 
-- [Project Overview](#-project-overview)
-- [Problem Statement](#-problem-statement)
-- [Project Objectives](#-project-objectives)
-- [Proposed Solution](#-proposed-solution)
-- [Key Features](#-key-features)
-- [User Roles](#-user-roles)
-- [Functional Modules](#-functional-modules)
-- [Technology Stack](#-technology-stack)
-- [System Architecture](#-system-architecture)
-- [Application Architecture](#-application-architecture)
-- [Data Flow](#-data-flow)
-- [Database Design](#-database-design)
-- [Authentication & Authorization](#-authentication--authorization)
-- [Booking Management](#-booking-management)
-- [Conflict Detection](#-conflict-detection)
-- [Room Maintenance](#-room-maintenance)
-- [Support Ticket System](#-support-ticket-system)
-- [Notification System](#-notification-system)
-- [Offline-First Mobile Architecture](#-offline-first-mobile-architecture)
-- [Synchronization Strategy](#-synchronization-strategy)
-- [Web Application](#-web-application)
-- [Mobile Application](#-mobile-application)
-- [Admin Dashboard](#-admin-dashboard)
-- [GraphQL API](#-graphql-api)
-- [Project Structure](#-project-structure)
-- [Prerequisites](#-prerequisites)
-- [Installation](#-installation)
-- [Running the Project](#-running-the-project)
-- [AWS Deployment](#-aws-deployment)
-- [Android APK](#-android-apk)
-- [Testing](#-testing)
-- [Security](#-security)
-- [Error Handling](#-error-handling)
-- [Troubleshooting](#-troubleshooting)
-- [Demonstration Workflow](#-demonstration-workflow)
-- [Future Enhancements](#-future-enhancements)
-- [Team](#-team)
+| Property | Details |
+| :--- | :--- |
+| **Project Name** | CampusRoom |
+| **Team** | `Y24-SAA-Team338` |
+| **Repository** | `rampranai-0104/campus-service-aws` |
+| **Primary Use Case** | Campus room, laboratory, auditorium, seminar hall, and study-space management |
+| **Platforms** | Web + Android Mobile |
+| **Backend** | AWS Serverless Architecture |
 
 ---
 
-# 🚀 Project Overview
+## Table of Contents
 
-**CampusRoom** is a full-stack campus space booking and facility management platform designed to simplify the management of university and college facilities.
-
-The system provides a single platform through which students, faculty, and administrators can interact with campus spaces.
-
-Users can search for rooms, check availability, make reservations, track bookings, and report facility issues.
-
-Administrators can manage rooms, approve reservations, handle maintenance, manage support tickets, and monitor utilization.
-
-The platform is available through:
-
-- 🌐 Web application
-- 📱 Android mobile application
-- ☁️ Serverless AWS backend
-
----
-
-# ❗ Problem Statement
-
-Many educational institutions still depend on manual or disconnected processes for managing campus rooms.
-
-These approaches can create several operational problems:
-
-### Booking Problems
-
-- Multiple users may attempt to reserve the same room.
-- Room availability may not be updated immediately.
-- Manual booking records are difficult to maintain.
-- Users may not know whether a room is available.
-
-### Administration Problems
-
-- Administrators need to manually verify reservations.
-- Room maintenance information may not be communicated efficiently.
-- Reassigning rooms can be difficult.
-
-### Facility Management Problems
-
-- Maintenance issues may be reported through informal channels.
-- Support requests may not have clear statuses.
-- Administrators may not have centralized visibility.
-
-### Connectivity Problems
-
-Campus users may sometimes experience:
-
-- Weak Wi-Fi
-- Temporary network failures
-- Unstable mobile connectivity
-
-A booking system that completely depends on continuous connectivity can therefore provide a poor user experience.
+1. [Problem Statement](#problem-statement)
+2. [Users & Roles](#users--roles)
+3. [Technology Stack](#technology-stack)
+4. [System Architecture](#system-architecture)
+5. [Database Architecture](#database-architecture)
+6. [Booking Management](#booking-management)
+7. [Conflict Detection](#conflict-detection)
+8. [Room Maintenance](#room-maintenance)
+9. [Support Ticket System](#support-ticket-system)
+10. [Authentication & Security](#authentication--security)
+11. [Web Application](#web-application)
+12. [Mobile Application](#mobile-application)
+13. [Offline-First Architecture](#offline-first-architecture)
+14. [GraphQL API](#graphql-api)
+15. [Project Structure](#project-structure)
+16. [Local Development](#local-development)
+17. [Deployment](#deployment)
+18. [Testing](#testing)
+19. [Troubleshooting](#troubleshooting)
+20. [Demonstration Workflow](#demonstration-workflow)
+21. [Future Enhancements](#future-enhancements)
 
 ---
 
-# 🎯 Project Objectives
+# Problem Statement
 
-CampusRoom is designed with the following objectives:
+Traditional campus room-booking systems often rely on manual registers, spreadsheets, or disconnected communication channels. These approaches can result in:
 
-1. Provide centralized campus room management.
-2. Simplify room reservation.
-3. Prevent double bookings.
-4. Provide secure authentication.
-5. Implement role-based authorization.
-6. Provide real-time updates.
-7. Manage room maintenance.
-8. Provide facility support tickets.
-9. Provide administrative analytics.
-10. Support selected mobile workflows offline.
-11. Synchronize offline actions when connectivity returns.
-12. Provide a scalable serverless architecture.
+- Double-booked rooms and scheduling conflicts
+- Unauthorized reservations
+- Limited visibility into room availability
+- Delayed maintenance reporting
+- Difficulty managing reservations across different user roles
+- Poor reliability during unstable campus network conditions
+
+**CampusRoom** addresses these challenges through a centralized digital platform that provides secure booking, real-time availability, automated conflict detection, facility management, analytics, and offline-first mobile functionality.
 
 ---
 
-# 💡 Proposed Solution
+# Users & Roles
 
-CampusRoom combines a modern web application, mobile application, and AWS serverless backend.
+CampusRoom supports three primary user roles.
 
-```text
-                    CAMPUSROOM
-                         │
-          ┌──────────────┴──────────────┐
-          │                             │
-          ▼                             ▼
-     Web Platform                 Mobile Platform
-          │                             │
-          └──────────────┬──────────────┘
-                         │
-                         ▼
-                 AWS AppSync
-                 GraphQL API
-                         │
-          ┌──────────────┼──────────────┐
-          │              │              │
-          ▼              ▼              ▼
-      DynamoDB        Lambda           S3
-          │
-          ▼
-      Cognito
+### Student
+
+Students can:
+
+- Browse available rooms
+- View room facilities and capacity
+- Create reservations
+- View booking history
+- Cancel bookings
+- Receive notifications
+- Submit facility support tickets
+- Use offline booking functionality through the mobile application
+
+### Faculty / Staff
+
+Faculty and staff can:
+
+- Reserve seminar halls and laboratories
+- View room availability
+- Manage their bookings
+- Receive booking notifications
+- Report facility and equipment issues
+
+### Administrator
+
+Administrators can:
+
+- Approve or reject booking requests
+- Create and manage rooms
+- Reassign reservations
+- Manage room maintenance status
+- Manage support tickets
+- Monitor room utilization
+- Access administrative analytics
+- Manage user roles and permissions
+
+---
+
+# Technology Stack
+
+| Technology | Purpose |
+| :--- | :--- |
+| **React 19** | Web application development |
+| **Vite 8** | Frontend development and build tooling |
+| **React Native** | Mobile application development |
+| **Expo SDK 57** | Mobile development framework |
+| **Expo Router** | Mobile navigation |
+| **TypeScript** | Type-safe backend and mobile development |
+| **AWS Amplify Gen 2** | Infrastructure and backend resource management |
+| **Amazon Cognito** | Authentication and authorization |
+| **AWS AppSync** | GraphQL API |
+| **Amazon DynamoDB** | Serverless NoSQL database |
+| **AWS Lambda** | Serverless backend logic |
+| **Amazon S3** | Room image and asset storage |
+| **Expo EAS** | Android APK builds |
+| **AsyncStorage** | Local mobile persistence |
+| **NetInfo** | Network connectivity detection |
+
+---
+
+# System Architecture
+
+CampusRoom follows a serverless cloud architecture.
+
+```mermaid
+flowchart TD
+
+    subgraph Clients["Client Applications"]
+        Web["React Web Application"]
+        Mobile["React Native Mobile Application"]
+    end
+
+    subgraph AWS["AWS Cloud"]
+        Cognito["Amazon Cognito"]
+        AppSync["AWS AppSync GraphQL"]
+        Lambda["AWS Lambda"]
+        DynamoDB["Amazon DynamoDB"]
+        S3["Amazon S3"]
+    end
+
+    Web --> Cognito
+    Mobile --> Cognito
+
+    Web --> AppSync
+    Mobile --> AppSync
+
+    AppSync --> DynamoDB
+    AppSync --> Lambda
+    Lambda --> DynamoDB
+
+    Web --> S3
+    Mobile --> S3
