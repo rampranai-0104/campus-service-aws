@@ -1,6 +1,6 @@
-- Maintenance issues may be reported through informal channels.
-- Support requests may not have clear statuses.
-- Administrators may not have centralized visibility.
+-- Maintenance issues may be reported through informal channels.
+-- Support requests may not have clear statuses.
+-- Administrators may not have centralized visibility.
 
 ### Connectivity Problems
 
